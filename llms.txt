@@ -1,0 +1,35 @@
+# BrightBean platform: API and MCP for agents
+
+> How an AI agent connects to BrightBean (platform.brightbean.xyz) and drafts, schedules, queues, publishes and measures social posts on Facebook, Instagram, Threads, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Google Business and DEV. MCP server: https://api-platform.brightbean.xyz/api/v1/mcp (Streamable HTTP, OAuth or Bearer API key). REST: https://api-platform.brightbean.xyz/api/v1 (Bearer API key `bb_live_…`, plus your own User-Agent).
+
+Start with SKILL.md: it is enough for normal use. Every time needs an offset, every write takes an idempotency key, and nothing should be published or scheduled without the user's confirmation.
+
+## Start here
+
+- [SKILL.md](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/SKILL.md): connect, first call, every tool and endpoint, the rules
+- [README.md](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/README.md): install for Claude Code, Claude Desktop, claude.ai, Cursor, VS Code, Codex
+
+## Reference
+
+- [Overview](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/overview.md): objects, statuses, REST vs MCP
+- [Authentication](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/authentication.md): API keys, permissions, OAuth
+- [REST API](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/rest-api.md): every endpoint and field
+- [MCP tools](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/mcp-tools.md): every tool, results, errors
+- [Posts and delivery](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/posts-and-delivery.md): statuses, delivery modes, Review, per-channel options
+- [Networks](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/platforms.md): per-network limits and rules
+- [Media uploads](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/media-uploads.md)
+- [Analytics](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/analytics.md)
+- [Polling](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/polling.md)
+- [Errors](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/errors.md)
+- [Rate limits and daily caps](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/rate-limits.md)
+- [Workflows](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/reference/workflows.md): recipes
+
+## Machine-readable
+
+- [OpenAPI snapshot](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/docs/openapi.json) (live: https://api-platform.brightbean.xyz/api/v1/openapi.json)
+- [MCP tools/list snapshot](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/docs/mcp-tools.json)
+
+## Optional
+
+- [Examples](https://github.com/brightbeanxyz/brightbean-platform-agent/tree/main/examples): Python, Node, shell
+- [MCP client configs](https://github.com/brightbeanxyz/brightbean-platform-agent/tree/main/mcp)

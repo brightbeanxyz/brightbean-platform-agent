@@ -1,0 +1,3 @@
+requests>=2.31
+# Windows has no system time-zone database; zoneinfo (used by 04_schedule.py --tz) needs this.
+tzdata; sys_platform == "win32"

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "brightbean": {
+      "url": "https://api-platform.brightbean.xyz/api/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer ${env:BRIGHTBEAN_API_KEY}"
+      }
+    }
+  }
+}

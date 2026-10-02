@@ -1,0 +1,6 @@
+# ~/.codex/config.toml (or .codex/config.toml in a trusted project)
+# Sends `Authorization: Bearer $BRIGHTBEAN_API_KEY`. Remove `bearer_token_env_var` to use
+# OAuth instead (`codex mcp login brightbean`).
+[mcp_servers.brightbean]
+url = "https://api-platform.brightbean.xyz/api/v1/mcp"
+bearer_token_env_var = "BRIGHTBEAN_API_KEY"
