@@ -10,7 +10,10 @@
 #   $API                      the REST base, .../api/v1
 #   $MCP                      the MCP endpoint, .../api/v1/mcp
 #   bb METHOD PATH [BODY] [extra curl args...]
-#                             call the REST API; prints the body, exits non-zero on 4xx/5xx
+#                             call the REST API; prints the body, exits non-zero on 4xx/5xx.
+#                             BODY is the JSON body; it is optional, so curl options can
+#                             follow PATH directly (bb GET /posts/ -H "If-None-Match: …").
+#                             An argument starting with "-" is never taken as the body.
 #   mcp JSON_RPC_MESSAGE      POST one JSON-RPC message to the MCP server
 #   new_key INTENT            a fresh Idempotency-Key
 
@@ -37,8 +40,12 @@ new_key() {
 }
 
 bb() {
-  local method="$1" path="$2" body="${3:-}"
-  shift 3 2>/dev/null || shift $#
+  local method="$1" path="$2" body=""
+  shift 2
+  if [[ $# -gt 0 && "$1" != -* ]]; then
+    body="$1"
+    shift
+  fi
   local args=(-sS -X "$method" -H "Authorization: Bearer ${BRIGHTBEAN_API_KEY}" -H "User-Agent: ${UA}")
   if [[ -n "$body" ]]; then
     args+=(-H "Content-Type: application/json" --data "$body")

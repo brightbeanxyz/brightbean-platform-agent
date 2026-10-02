@@ -6,9 +6,11 @@
 import { ApiError, BrightBean, newIdempotencyKey, parseArgs, show, usage } from "./client.mjs";
 
 const { flags, positional } = parseArgs(process.argv.slice(2), { booleans: ["queue"] });
-if (!positional.length || typeof flags.caption !== "string" || !(flags.at || flags.queue)) {
-  usage("usage: node 05_create_and_deliver.mjs <account_id>... --caption TEXT (--at ISO | --queue)");
+const modes = [flags.at !== undefined, flags.queue].filter(Boolean).length;
+if (!positional.length || typeof flags.caption !== "string" || modes !== 1) {
+  usage("usage: node 05_create_and_deliver.mjs <account_id>... --caption TEXT (--at ISO | --queue), exactly one of --at / --queue");
 }
+if (flags.at !== undefined && !/(Z|[+-]\d\d:\d\d)$/.test(flags.at)) usage("--at needs an offset, e.g. 2026-10-06T09:00:00+02:00");
 const delivery = flags.at ? { mode: "at", at: flags.at } : { mode: "queue" };
 const idempotencyKey = newIdempotencyKey("create-and-deliver");
 const bb = new BrightBean();

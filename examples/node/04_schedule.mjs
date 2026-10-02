@@ -7,7 +7,8 @@ import { BrightBean, newIdempotencyKey, parseArgs, show, usage } from "./client.
 
 const { flags, positional } = parseArgs(process.argv.slice(2), { booleans: ["queue", "prioritise", "submit"] });
 const [postId] = positional;
-if (!postId || !(flags.at || flags.queue || flags.prioritise)) usage("usage: node 04_schedule.mjs <post_id> --at ISO|--queue|--prioritise [--submit]");
+const modes = [flags.at !== undefined, flags.queue, flags.prioritise].filter(Boolean).length;
+if (!postId || modes !== 1) usage("usage: node 04_schedule.mjs <post_id> (--at ISO | --queue | --prioritise) [--submit], exactly one of --at / --queue / --prioritise");
 if (typeof flags.at === "string" && !/(Z|[+-]\d\d:\d\d)$/.test(flags.at)) usage("--at needs an offset, e.g. 2026-10-06T09:00:00+02:00");
 
 const delivery = flags.at ? { mode: "at", at: flags.at } : { mode: flags.queue ? "queue" : "prioritise" };
