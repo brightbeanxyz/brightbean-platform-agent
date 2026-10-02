@@ -5,7 +5,7 @@
 //   node 04_schedule.mjs <post_id> --at 2026-10-06T09:00:00+02:00 --submit
 import { BrightBean, newIdempotencyKey, parseArgs, show, usage } from "./client.mjs";
 
-const { flags, positional } = parseArgs();
+const { flags, positional } = parseArgs(process.argv.slice(2), { booleans: ["queue", "prioritise", "submit"] });
 const [postId] = positional;
 if (!postId || !(flags.at || flags.queue || flags.prioritise)) usage("usage: node 04_schedule.mjs <post_id> --at ISO|--queue|--prioritise [--submit]");
 if (typeof flags.at === "string" && !/(Z|[+-]\d\d:\d\d)$/.test(flags.at)) usage("--at needs an offset, e.g. 2026-10-06T09:00:00+02:00");

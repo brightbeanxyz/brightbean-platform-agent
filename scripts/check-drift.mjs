@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 // Drift guard: does this repo still describe the live BrightBean API?
 //
-//   node scripts/check-drift.mjs            check, exit 1 on any drift
-//   node scripts/check-drift.mjs --update   rewrite the snapshots in docs/ from the live API
+//   node scripts/check-drift.mjs             check against the live API, exit 1 on any drift
+//   node scripts/check-drift.mjs --update    rewrite the snapshots in docs/ from the live API
+//   node scripts/check-drift.mjs --offline   only check the docs cover the snapshots (no network)
 //
 // Environment:
 //   BRIGHTBEAN_API_URL  default https://api-platform.brightbean.xyz
-//   BRIGHTBEAN_API_KEY  optional. With it, the MCP tools/list is compared too. Use a key
-//                       with every permission, or tools it can't see are only reported.
+//   BRIGHTBEAN_API_KEY  optional. With it, the MCP tools/list is compared too. With a key
+//                       that holds every permission, a tool missing from tools/list counts
+//                       as REMOVED; with a narrower key it is only reported.
 //
 // Checks:
 //   1. The live /api/v1/openapi.json equals docs/openapi.json.
-//   2. Every REST operation (its operationId and path) appears in reference/rest-api.md, and
-//      every MCP tool in docs/mcp-tools.json appears in reference/mcp-tools.md and SKILL.md.
+//   2. Every REST operation has its row in reference/rest-api.md's operations table
+//      (method, path and operationId together), and every MCP tool in docs/mcp-tools.json
+//      appears in reference/mcp-tools.md and SKILL.md.
 //   3. (with a key) The live tools/list matches docs/mcp-tools.json.
 //
 // Node 18+, no dependencies.
@@ -25,7 +28,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const API_URL = (process.env.BRIGHTBEAN_API_URL ?? "https://api-platform.brightbean.xyz").replace(/\/+$/, "");
 const API_KEY = process.env.BRIGHTBEAN_API_KEY ?? "";
 const UPDATE = process.argv.includes("--update");
+const OFFLINE = process.argv.includes("--offline");
 const UA = "brightbean-platform-agent-drift-check/1.0";
+const ALL_PERMISSIONS = ["read", "create_posts", "upload_media", "view_analytics", "publish_directly"];
 
 const problems = []; // drift between the snapshots and the live API (--update fixes these)
 const gaps = []; // things the docs fail to mention (only editing the docs fixes these)
@@ -49,11 +54,14 @@ async function readText(rel) {
   return readFile(join(ROOT, rel), "utf8");
 }
 
+/** "METHOD /path" → { method, path, ...operation } for every operation in a spec. */
 function operations(spec) {
   const ops = new Map();
   for (const [path, item] of Object.entries(spec.paths ?? {})) {
     for (const [method, op] of Object.entries(item)) {
-      if (op && typeof op === "object" && op.operationId) ops.set(`${method.toUpperCase()} ${path}`, { path, ...op });
+      if (op && typeof op === "object" && op.operationId) {
+        ops.set(`${method.toUpperCase()} ${path}`, { method: method.toUpperCase(), path, ...op });
+      }
     }
   }
   return ops;
@@ -70,13 +78,13 @@ async function checkOpenApi() {
     notes.push("openapi.json: matches the live spec");
     return live;
   }
-  const a = operations(snapshot);
-  const b = operations(live);
-  for (const key of b.keys()) if (!a.has(key)) problems.push(`openapi: NEW operation ${key} (${b.get(key).operationId})`);
-  for (const key of a.keys()) if (!b.has(key)) problems.push(`openapi: REMOVED operation ${key}`);
-  for (const key of a.keys()) if (b.has(key) && !same(a.get(key), b.get(key))) problems.push(`openapi: CHANGED ${key}`);
-  const rest = (s) => ({ ...s, paths: undefined });
-  if (!same(rest(live), rest(snapshot))) problems.push("openapi: info / components / servers changed");
+  const before = operations(snapshot);
+  const after = operations(live);
+  for (const [key, op] of after) if (!before.has(key)) problems.push(`openapi: NEW operation ${key} (${op.operationId})`);
+  for (const key of before.keys()) if (!after.has(key)) problems.push(`openapi: REMOVED operation ${key}`);
+  for (const [key, op] of before) if (after.has(key) && !same(op, after.get(key))) problems.push(`openapi: CHANGED ${key}`);
+  const withoutPaths = (s) => ({ ...s, paths: undefined });
+  if (!same(withoutPaths(live), withoutPaths(snapshot))) problems.push("openapi: info / components / servers changed");
   if (UPDATE) {
     await writeFile(join(ROOT, "docs/openapi.json"), pretty(live));
     notes.push("openapi.json: UPDATED from the live spec. Now update reference/ and SKILL.md to match.");
@@ -86,11 +94,18 @@ async function checkOpenApi() {
 
 // ---- 2. Docs mention everything ------------------------------------------------
 
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 async function checkDocsCover(spec) {
   const restDoc = await readText("reference/rest-api.md");
-  for (const [key, op] of operations(spec)) {
-    if (!restDoc.includes(op.operationId)) gaps.push(`reference/rest-api.md: missing operationId ${op.operationId} (${key})`);
-    if (!restDoc.includes(op.path)) gaps.push(`reference/rest-api.md: missing path ${op.path}`);
+  const ops = operations(spec);
+  for (const [key, op] of ops) {
+    // The operations table row: | METHOD | `path` | `operationId` | …
+    const row = new RegExp(
+      `^\\|\\s*${op.method}\\s*\\|\\s*\`${escapeRegExp(op.path)}\`\\s*\\|\\s*\`${escapeRegExp(op.operationId)}\`\\s*\\|`,
+      "m",
+    );
+    if (!row.test(restDoc)) gaps.push(`reference/rest-api.md: no table row for ${key} (\`${op.operationId}\`)`);
   }
   const { tools } = await readJson("docs/mcp-tools.json");
   if (!tools?.length) gaps.push("docs/mcp-tools.json: no tools in the snapshot");
@@ -100,20 +115,19 @@ async function checkDocsCover(spec) {
     if (!mcpDoc.includes(`\`${t.name}\``)) gaps.push(`reference/mcp-tools.md: missing tool ${t.name}`);
     if (!skill.includes(`\`${t.name}\``)) gaps.push(`SKILL.md: missing tool ${t.name}`);
   }
-  notes.push(`docs cover ${operations(spec).size} operations and ${tools?.length ?? 0} tools`);
+  notes.push(`docs cover ${ops.size} operations and ${tools?.length ?? 0} tools`);
 }
 
 // ---- 3. MCP tools/list ---------------------------------------------------------
 
+function authHeaders(extra = {}) {
+  return { Authorization: `Bearer ${API_KEY}`, "User-Agent": UA, ...extra };
+}
+
 async function mcp(method, params, id) {
   const res = await fetch(`${API_URL}/api/v1/mcp`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      "User-Agent": UA,
-      "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-    },
+    headers: authHeaders({ "Content-Type": "application/json", Accept: "application/json, text/event-stream" }),
     body: JSON.stringify({ jsonrpc: "2.0", id, method, ...(params ? { params } : {}) }),
   });
   const body = await res.json().catch(() => null);
@@ -121,11 +135,20 @@ async function mcp(method, params, id) {
   return body.result;
 }
 
+/** Whether the key holds every permission, so tools/list shows every tool. */
+async function keySeesEverything() {
+  const res = await fetch(`${API_URL}/api/v1/me/`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`GET /api/v1/me/: HTTP ${res.status}`);
+  const { permissions } = await res.json();
+  return ALL_PERMISSIONS.every((p) => permissions.includes(p));
+}
+
 async function checkMcp() {
   if (!API_KEY) {
     notes.push("MCP tools/list: SKIPPED (set BRIGHTBEAN_API_KEY to compare it)");
     return;
   }
+  const complete = await keySeesEverything();
   await mcp("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "drift-check", version: "1" } }, 1);
   const { tools: live } = await mcp("tools/list", undefined, 2);
   const snapshot = (await readJson("docs/mcp-tools.json")).tools ?? [];
@@ -135,13 +158,23 @@ async function checkMcp() {
     else if (!same(t, byName.get(t.name))) problems.push(`mcp: CHANGED tool ${t.name}`);
   }
   const liveNames = new Set(live.map((t) => t.name));
-  const hidden = snapshot.filter((t) => !liveNames.has(t.name)).map((t) => t.name);
-  if (hidden.length) notes.push(`mcp: not visible to this key (permissions?), not compared: ${hidden.join(", ")}`);
-  notes.push(`mcp: compared ${live.length} tools`);
+  const missing = snapshot.filter((t) => !liveNames.has(t.name)).map((t) => t.name);
+  if (missing.length && complete) {
+    for (const name of missing) problems.push(`mcp: REMOVED tool ${name}`);
+  } else if (missing.length) {
+    notes.push(`mcp: not visible to this key (it lacks some permissions), not compared: ${missing.join(", ")}`);
+  }
+  notes.push(`mcp: compared ${live.length} tools${complete ? " (key holds every permission)" : ""}`);
   if (UPDATE) {
-    const merged = snapshot.filter((t) => !liveNames.has(t.name)).concat(live);
-    const order = new Map(live.map((t, i) => [t.name, i]));
-    merged.sort((x, y) => (order.get(x.name) ?? 1e9) - (order.get(y.name) ?? 1e9));
+    // A full key's list is the whole catalogue. A narrower key can only refresh what it sees:
+    // keep the tools it can't see where they were, swap in the live version of the rest, and
+    // append tools that are new.
+    const liveByName = new Map(live.map((t) => [t.name, t]));
+    const merged = complete
+      ? live
+      : snapshot
+          .map((t) => liveByName.get(t.name) ?? t)
+          .concat(live.filter((t) => !byName.has(t.name)));
     await writeFile(join(ROOT, "docs/mcp-tools.json"), pretty({ tools: merged }));
     notes.push("mcp-tools.json: UPDATED from the live tools/list");
   }
@@ -150,15 +183,20 @@ async function checkMcp() {
 // ---- run -----------------------------------------------------------------------
 
 try {
-  const spec = await checkOpenApi();
-  await checkMcp();
-  await checkDocsCover(UPDATE ? spec : await readJson("docs/openapi.json"));
+  if (OFFLINE) {
+    notes.push("live API: SKIPPED (--offline)");
+    await checkDocsCover(await readJson("docs/openapi.json"));
+  } else {
+    const spec = await checkOpenApi();
+    await checkMcp();
+    await checkDocsCover(UPDATE ? spec : await readJson("docs/openapi.json"));
+  }
 } catch (error) {
   console.error(`drift check could not run: ${error.message}`);
   process.exit(2);
 }
 
-console.log(`Checked ${API_URL}`);
+console.log(OFFLINE ? "Checked the docs against the snapshots" : `Checked ${API_URL}`);
 for (const n of notes) console.log(`  ok    ${n}`);
 for (const p of problems) console.log(`  DRIFT ${p}`);
 for (const g of gaps) console.log(`  DOCS  ${g}`);

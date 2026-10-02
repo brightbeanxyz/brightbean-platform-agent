@@ -5,10 +5,13 @@ source "$(dirname "$0")/_common.sh"
 need_jq
 file="${1:?usage: 08_upload_media.sh <file>}"
 size="$(wc -c <"$file" | tr -d ' ')"
+# The file types BrightBean accepts. Anything else is refused only at `complete`, after
+# every byte has been sent, so check first.
 case "$(printf %s "$file" | tr "[:upper:]" "[:lower:]")" in
+  *.png|*.jpg|*.jpeg|*.webp) type=image ;;
   *.gif) type=gif ;;
   *.mp4|*.mov|*.webm) type=video ;;
-  *) type=image ;;
+  *) echo "Not an accepted file type. Use .png .jpg .jpeg .webp .gif .mp4 .mov or .webm." >&2; exit 2 ;;
 esac
 
 # 1. Start.

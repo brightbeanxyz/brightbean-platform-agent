@@ -43,7 +43,19 @@ class ApiError(Exception):
 
 
 class McpToolError(Exception):
-    """A tool call that came back with ``isError: true``."""
+    """A tool call that came back with ``isError: true`` (the message says why)."""
+
+
+class McpRpcError(Exception):
+    """A JSON-RPC error, e.g. -32000 "Too many requests" on initialize / tools/list.
+
+    ``data`` may carry ``retry_after`` (seconds).
+    """
+
+    def __init__(self, error: dict):
+        self.code = error.get("code")
+        self.data = error.get("data") or {}
+        super().__init__(f"JSON-RPC error {self.code}: {error.get('message')}")
 
 
 class BrightBean:
@@ -108,7 +120,7 @@ class BrightBean:
     # ---- MCP ----------------------------------------------------------------
 
     def mcp_rpc(self, method: str, params: dict[str, Any] | None = None) -> Any:
-        """One JSON-RPC call to the MCP server. Returns ``result``; raises on a JSON-RPC error."""
+        """One JSON-RPC call to the MCP server. Returns ``result``; raises McpRpcError on a JSON-RPC error."""
         self._rpc_id += 1
         message: dict[str, Any] = {"jsonrpc": "2.0", "id": self._rpc_id, "method": method}
         if params is not None:
@@ -125,13 +137,21 @@ class BrightBean:
             except ValueError:
                 payload = response.text
             raise ApiError(response.status_code, payload, response.headers)
-        reply = response.json()
+        try:
+            reply = response.json()
+        except ValueError:
+            reply = None
+        if not isinstance(reply, dict) or not ("result" in reply or "error" in reply):
+            raise RuntimeError(f"unexpected MCP reply to {method} (HTTP {response.status_code}): {response.text[:200]!r}")
         if "error" in reply:
-            raise RuntimeError(f"JSON-RPC error {reply['error']['code']}: {reply['error']['message']}")
+            raise McpRpcError(reply["error"])
         return reply["result"]
 
     def mcp(self, tool: str, **arguments: Any) -> Any:
-        """Call a tool. Returns its JSON payload (the second text item), or the sentence if there is none."""
+        """Call a tool. Returns its JSON payload (the second text item), or the sentence if there is none.
+
+        Raises McpToolError when the tool fails, McpRpcError on a protocol-level error.
+        """
         result = self.mcp_rpc("tools/call", {"name": tool, "arguments": arguments})
         texts = [c["text"] for c in result.get("content", []) if c.get("type") == "text"]
         if result.get("isError"):

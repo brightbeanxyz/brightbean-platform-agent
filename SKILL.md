@@ -111,7 +111,7 @@ From the answer, keep:
 | `social_list_posts` | read | `GET /posts/` | `status?` (comma list), `accountId?`, `updatedSince?`, `cursor?`, `limit?` ≤100 |
 | `social_get_post` | read | `GET /posts/{id}` | `postId` |
 | `social_create_draft` | create_posts | `POST /posts/` | `accounts`[1–20], `caption`, `title?`, `firstComment?`, `linkUrl?`, `perAccount?`, `mediaAssetIds?`, `proposedPublishAt?`, `delivery?`, `idempotencyKey?` |
-| `social_update_draft` | create_posts | `PATCH /posts/{id}` | `postId` + fields to change (`null` clears). **No `idempotencyKey`.** |
+| `social_update_draft` | create_posts | `PATCH /posts/{id}` | `postId` + fields to change (`null` clears `title`/`firstComment`/`linkUrl`/`proposedPublishAt` and fields inside `perAccount[id]`, not `perAccount` itself). **No `idempotencyKey`.** |
 | `social_duplicate_post` | create_posts | `POST /posts/{id}/duplicate` | `postId`, `idempotencyKey?` |
 | `social_submit_post` | create_posts | `POST /posts/{id}/submit` | `postId`, `delivery`, `idempotencyKey?` |
 | `social_withdraw_post` | create_posts | `POST /posts/{id}/withdraw` | `postId` |

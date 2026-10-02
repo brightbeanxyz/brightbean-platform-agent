@@ -119,8 +119,12 @@ scripts/check-drift.mjs   checks this repo against the live API
 ## Keeping it accurate
 
 `node scripts/check-drift.mjs` compares `docs/openapi.json` with the live spec. It also
-checks that every operation and tool is documented. With `BRIGHTBEAN_API_KEY` set, it
-compares the live MCP `tools/list` too. A GitHub Action runs it weekly.
+checks that every operation has its row in `reference/rest-api.md`, and every tool is
+documented. With `BRIGHTBEAN_API_KEY` set, it compares the live MCP `tools/list` too. Use
+a key with every permission, so a removed tool counts as drift.
+
+The GitHub Action runs the live check weekly and on demand. On pull requests it runs only
+`--offline`: static checks and docs coverage, with no network.
 
 When the live OpenAPI spec and the server disagree, these docs follow the server (see
 [rest-api.md](reference/rest-api.md#where-the-openapi-spec-is-wrong)).

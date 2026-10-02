@@ -7,7 +7,6 @@ Use the printed id in a post's mediaAssetIds (03_create_draft.py --media <id>).
 """
 
 import argparse
-import mimetypes
 import os
 
 import requests
@@ -19,9 +18,18 @@ parser.add_argument("path")
 parser.add_argument("--alt", help="alt text")
 args = parser.parse_args()
 
+# The file types BrightBean accepts. Anything else is refused only at `complete`, after
+# every byte has been sent, so check first.
+MEDIA_TYPE_BY_EXTENSION = {
+    ".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image",
+    ".gif": "gif",
+    ".mp4": "video", ".mov": "video", ".webm": "video",
+}
+extension = os.path.splitext(args.path)[1].lower()
+media_type = MEDIA_TYPE_BY_EXTENSION.get(extension)
+if media_type is None:
+    raise SystemExit(f"{extension or 'this file'} isn't accepted. Use one of: {', '.join(MEDIA_TYPE_BY_EXTENSION)}")
 size = os.path.getsize(args.path)
-mime = mimetypes.guess_type(args.path)[0] or ""
-media_type = "gif" if mime == "image/gif" else "video" if mime.startswith("video/") else "image"
 
 bb = BrightBean()
 

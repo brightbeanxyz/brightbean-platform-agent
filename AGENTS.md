@@ -23,6 +23,7 @@ The essentials:
 - The docs describe the live API. `node scripts/check-drift.mjs` checks them against it:
   `docs/openapi.json`, docs coverage of every operation and tool, and the MCP `tools/list`
   when `BRIGHTBEAN_API_KEY` is set. Run it after any change, and keep it passing.
+  `--offline` checks only the docs against the snapshots.
 - Where the live OpenAPI spec and the server disagree, the docs follow the server. They
   list the differences in `reference/rest-api.md` ("Where the OpenAPI spec is wrong").
 - Examples must keep working in all three languages, and must send their own `User-Agent`.

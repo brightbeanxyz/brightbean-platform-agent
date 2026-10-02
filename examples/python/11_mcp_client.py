@@ -10,26 +10,31 @@ The server is stateless and answers in JSON (no SSE). Requests must send
 import json
 import sys
 
-from client import BrightBean, McpToolError, show
+from client import BrightBean, McpRpcError, McpToolError, show
 
 bb = BrightBean()
-
-init = bb.mcp_rpc(
-    "initialize",
-    {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "bb-example", "version": "1.0"}},
-)
-print(f"server: {init['serverInfo']['name']} {init['serverInfo']['version']}, protocol {init['protocolVersion']}")
-print(f"instructions: {init.get('instructions', '')}\n")
-
-tools = bb.mcp_rpc("tools/list")["tools"]
-print(f"{len(tools)} tools visible to this key:")
-for tool in tools:
-    print(f"  {tool['name']:<32} {tool['title']}")
-
 name = sys.argv[1] if len(sys.argv) > 1 else "social_list_accounts"
 arguments = json.loads(sys.argv[2]) if len(sys.argv) > 2 else {}
-print(f"\ntools/call {name} {arguments}")
+
 try:
+    init = bb.mcp_rpc(
+        "initialize",
+        {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "bb-example", "version": "1.0"}},
+    )
+    print(f"server: {init['serverInfo']['name']} {init['serverInfo']['version']}, protocol {init['protocolVersion']}")
+    print(f"instructions: {init.get('instructions', '')}\n")
+
+    tools = bb.mcp_rpc("tools/list")["tools"]
+    print(f"{len(tools)} tools visible to this key:")
+    for tool in tools:
+        print(f"  {tool['name']:<32} {tool['title']}")
+
+    print(f"\ntools/call {name} {arguments}")
     show(bb.mcp(name, **arguments))
 except McpToolError as e:
     print(f"tool error: {e}")
+except McpRpcError as e:
+    # e.g. a rate-limited initialize / tools/list: -32000 with data.retry_after
+    retry = e.data.get("retry_after")
+    print(f"{e}" + (f" (retry after {retry} s)" if retry else ""))
+    sys.exit(1)

@@ -337,13 +337,19 @@ the first call.
 
 Edit a **draft**.
 
-- A field left out keeps its value; `null` clears it.
+- A field left out keeps its value; `null` clears it, where the field allows `null`.
 - `perAccount[id].options` merges field by field: a field left out stays, `null` clears it,
   and `null` for the whole object clears every option.
 
-Fields: `accounts` (uuid[] 1–20), `caption`, `title`, `firstComment`, `linkUrl`,
-`perAccount`, `mediaAssetIds` (replaces the whole list), `proposedPublishAt`. All are
-optional; every one except `accounts`, `caption` and `mediaAssetIds` takes `null`.
+Fields (all optional):
+
+| Field | Takes `null`? | Notes |
+|---|---|---|
+| `accounts` | no | uuid[] 1–20 |
+| `caption` | no | |
+| `title`, `firstComment`, `linkUrl`, `proposedPublishAt` | yes: clears it | |
+| `mediaAssetIds` | no | Replaces the whole list. Send `[]` to remove all media. |
+| `perAccount` | **no** (the object itself) | Each entry's `caption`, `title`, `firstComment`, `boardId` and `options` take `null` (back to inherited / cleared). To clear a channel's overrides, send `{"<id>": {"caption": null, "title": null, "firstComment": null, "boardId": null, "options": null}}`. |
 
 **200** → [WritePost](#writepost).
 

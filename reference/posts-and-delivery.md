@@ -107,7 +107,8 @@ id:
 | `boardId` | Pinterest board id from `/accounts/{id}/boards`. `""` clears it. |
 | `options` | This network's settings (below). `null` clears them. |
 
-In PATCH, every field is nullable. `options` merges field by field.
+In PATCH, every field inside an entry takes `null` (back to inherited or cleared), but
+`perAccount` itself doesn't. `options` merges field by field.
 
 ## Per-network options: `perAccount[id].options`
 

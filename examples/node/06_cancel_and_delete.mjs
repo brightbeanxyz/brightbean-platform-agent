@@ -2,7 +2,7 @@
 //   node 06_cancel_and_delete.mjs <post_id> [--delete]
 import { BrightBean, newIdempotencyKey, parseArgs, usage } from "./client.mjs";
 
-const { flags, positional } = parseArgs();
+const { flags, positional } = parseArgs(process.argv.slice(2), { booleans: ["delete"] });
 const [postId] = positional;
 if (!postId) usage("usage: node 06_cancel_and_delete.mjs <post_id> [--delete]");
 

@@ -1,6 +1,6 @@
 """Two ways to watch for changes cheaply.
 
-    python 09_poll_changes.py --post <post_id>    # wait for one post to settle (ETag / 304)
+    python 09_poll_changes.py --post <post_id>    # wait until a post has gone out (ETag / 304)
     python 09_poll_changes.py --feed              # print every change across posts (updatedSince)
 """
 
@@ -17,7 +17,18 @@ parser.add_argument("--every", type=int, default=15, help="seconds between polls
 args = parser.parse_args()
 
 bb = BrightBean()
-SETTLED = {"draft", "published", "failed"}
+
+# Still on its way: waiting in Review, approved, held, queued, scheduled or publishing.
+# Judge by the POST's status too: while a post waits in Review its channels still read "draft".
+WAITING_POST = {"pending_approval", "approved", "on_hold", "queued", "scheduled", "publishing"}
+WAITING_CHANNEL = {"queued", "scheduled", "publishing"}
+
+
+def settled(post: dict) -> bool:
+    return post["status"] not in WAITING_POST and not any(
+        ch["status"] in WAITING_CHANNEL for ch in post["channels"]
+    )
+
 
 if args.post:
     etag = None
@@ -26,20 +37,21 @@ if args.post:
         if response.status_code == 304:
             print("  (unchanged)")
         else:
+            # A 200 doesn't prove a change (see reference/polling.md): judge by the content.
             etag = response.headers.get("ETag")
             post = response.json()
-            states = {ch["status"] for ch in post["channels"]}
             print(f"{post['status']}: " + ", ".join(f"{c['platform']}={c['status']}" for c in post["channels"]))
-            if states <= SETTLED:
+            if post["status"] == "pending_approval":
+                print("  waiting for someone to approve it in BrightBean Review")
+            if settled(post):
                 for ch in post["channels"]:
                     print(f"  {ch['platform']} @{ch['handle']}: {ch['status']} {ch['url'] or ch['error'] or ''}")
                 break
         time.sleep(args.every)
 else:
-    first = bb.get("/posts/", limit=1)
-    since = first["serverTime"]
+    since = bb.get("/posts/", limit=1)["serverTime"]
     print(f"Watching for changes after {since} (Ctrl-C to stop)")
-    seen: dict[str, str] = {}
+    seen: dict = {}  # post id -> updatedAt already printed
     while True:
         time.sleep(args.every)
         cursor = None
@@ -56,3 +68,6 @@ else:
             if not cursor:
                 break
         since = page["serverTime"]
+        # Only changes after `since` can come back, so older entries are no longer needed.
+        # (Both are the server's ISO-8601 UTC strings, which sort as text.)
+        seen = {pid: at for pid, at in seen.items() if at >= since}

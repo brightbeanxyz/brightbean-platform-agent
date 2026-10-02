@@ -5,7 +5,7 @@
 // daily cap). In the second case the draft exists; a retry with the SAME key reuses it.
 import { ApiError, BrightBean, newIdempotencyKey, parseArgs, show, usage } from "./client.mjs";
 
-const { flags, positional } = parseArgs();
+const { flags, positional } = parseArgs(process.argv.slice(2), { booleans: ["queue"] });
 if (!positional.length || typeof flags.caption !== "string" || !(flags.at || flags.queue)) {
   usage("usage: node 05_create_and_deliver.mjs <account_id>... --caption TEXT (--at ISO | --queue)");
 }

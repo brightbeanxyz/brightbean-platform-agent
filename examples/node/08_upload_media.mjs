@@ -8,8 +8,16 @@ const { flags, positional } = parseArgs();
 const [path] = positional;
 if (!path) usage("usage: node 08_upload_media.mjs <file> [--alt TEXT]");
 
+// The file types BrightBean accepts. Anything else is refused only at `complete`, after
+// every byte has been sent, so check first.
+const MEDIA_TYPE_BY_EXTENSION = {
+  ".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image",
+  ".gif": "gif",
+  ".mp4": "video", ".mov": "video", ".webm": "video",
+};
 const ext = extname(path).toLowerCase();
-const mediaType = ext === ".gif" ? "gif" : [".mp4", ".mov", ".webm"].includes(ext) ? "video" : "image";
+const mediaType = MEDIA_TYPE_BY_EXTENSION[ext];
+if (!mediaType) usage(`${ext || "this file"} isn't accepted. Use one of: ${Object.keys(MEDIA_TYPE_BY_EXTENSION).join(", ")}`);
 const { size } = await stat(path);
 const bb = new BrightBean();
 

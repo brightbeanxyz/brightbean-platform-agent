@@ -227,7 +227,7 @@ anything is created.
 | Argument | Req? | Notes |
 |---|---|---|
 | `postId` | yes | |
-| `accounts`, `caption`, `title`, `firstComment`, `linkUrl`, `perAccount`, `mediaAssetIds`, `proposedPublishAt` | no | Left out = unchanged; `null` clears (except `accounts`, `caption`, `mediaAssetIds`). `mediaAssetIds` replaces the list. `perAccount[id].options` merges field by field. |
+| `accounts`, `caption`, `title`, `firstComment`, `linkUrl`, `perAccount`, `mediaAssetIds`, `proposedPublishAt` | no | Left out = unchanged. `null` clears `title`, `firstComment`, `linkUrl` and `proposedPublishAt`. `accounts`, `caption`, `mediaAssetIds` and `perAccount` itself don't take `null`, but each `perAccount[id]` field does. `mediaAssetIds` replaces the list. `perAccount[id].options` merges field by field. |
 
 ⚠️ This tool has **no `idempotencyKey`** argument, and passing one fails validation. A post
 in `pending_approval` must be withdrawn first with `social_withdraw_post`. Only drafts can

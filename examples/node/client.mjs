@@ -25,7 +25,17 @@ export class ApiError extends Error {
   }
 }
 
+/** A tool call that came back with `isError: true` (the text says why). */
 export class McpToolError extends Error {}
+
+/** A JSON-RPC error, e.g. -32000 "Too many requests" on initialize / tools/list (data.retry_after). */
+export class McpRpcError extends Error {
+  constructor({ code, message, data }) {
+    super(`JSON-RPC error ${code}: ${message}`);
+    this.code = code;
+    this.data = data;
+  }
+}
 
 export class BrightBean {
   constructor({ apiUrl, apiKey } = {}) {
@@ -104,7 +114,10 @@ export class BrightBean {
       // not JSON
     }
     if (response.status >= 400) throw new ApiError(response.status, reply, response.headers);
-    if (reply.error) throw new Error(`JSON-RPC error ${reply.error.code}: ${reply.error.message}`);
+    if (!reply || typeof reply !== "object" || !("result" in reply || "error" in reply)) {
+      throw new Error(`unexpected MCP reply to ${method} (HTTP ${response.status}): ${String(text).slice(0, 200) || "<empty>"}`);
+    }
+    if (reply.error) throw new McpRpcError(reply.error);
     return reply.result;
   }
 
@@ -126,21 +139,31 @@ export function show(data) {
   console.log(JSON.stringify(data, null, 2));
 }
 
-/** Tiny flag parser: --name value, --flag, and positionals. */
-export function parseArgs(argv = process.argv.slice(2)) {
+/**
+ * Tiny flag parser. `--name value` and `--name=value` take a value (even one that starts
+ * with "--", e.g. a caption); names listed in `booleans` are switches (`--queue`).
+ * A value flag with nothing after it is a usage error rather than `true`.
+ */
+export function parseArgs(argv = process.argv.slice(2), { booleans = [] } = {}) {
+  const switches = new Set(booleans);
   const flags = {};
   const positional = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg.startsWith("--")) {
-      const name = arg.slice(2);
-      const next = argv[i + 1];
-      if (next === undefined || next.startsWith("--")) flags[name] = true;
-      else {
-        flags[name] = next;
-        i++;
-      }
-    } else positional.push(arg);
+    if (!arg.startsWith("--")) {
+      positional.push(arg);
+      continue;
+    }
+    const eq = arg.indexOf("=");
+    if (eq > 2) {
+      flags[arg.slice(2, eq)] = arg.slice(eq + 1);
+    } else if (switches.has(arg.slice(2))) {
+      flags[arg.slice(2)] = true;
+    } else if (i + 1 < argv.length) {
+      flags[arg.slice(2)] = argv[++i];
+    } else {
+      usage(`${arg} needs a value`);
+    }
   }
   return { flags, positional };
 }

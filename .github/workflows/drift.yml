@@ -1,6 +1,8 @@
-# Weekly check that this repo still describes the live BrightBean API.
-# Runs scripts/check-drift.mjs: the OpenAPI snapshot, docs coverage and, when the
-# BRIGHTBEAN_API_KEY secret is set (a key with every permission), the MCP tools/list.
+# Checks that this repo still describes the live BrightBean API (scripts/check-drift.mjs).
+# - Pull requests: static checks, plus docs coverage of the committed snapshots. No network,
+#   so a PR's result depends only on its own content.
+# - Weekly and on demand: the same, plus the live OpenAPI spec and, when the
+#   BRIGHTBEAN_API_KEY secret is set (a key with every permission), the MCP tools/list.
 name: drift
 
 on:
@@ -26,7 +28,11 @@ jobs:
           python3 -m py_compile examples/python/*.py
           for f in examples/node/*.mjs scripts/*.mjs; do node --check "$f"; done
           for f in examples/shell/*.sh; do bash -n "$f"; done
-      - name: Drift check
+      - name: Docs cover the snapshots
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-drift.mjs --offline
+      - name: Drift against the live API
+        if: github.event_name != 'pull_request'
         env:
           BRIGHTBEAN_API_KEY: ${{ secrets.BRIGHTBEAN_API_KEY }}
         run: node scripts/check-drift.mjs

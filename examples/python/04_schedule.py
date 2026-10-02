@@ -11,7 +11,8 @@ Needs publish_directly. Without it, use --submit: the request goes to Review ins
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timedelta
+import re
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from client import BrightBean, new_idempotency_key, show
@@ -19,16 +20,23 @@ from client import BrightBean, new_idempotency_key, show
 
 def parse_at(value: str, tz: str | None) -> str:
     """Return an ISO time WITH an offset: the API refuses times without one."""
-    if value.startswith("tomorrow "):
-        zone = ZoneInfo(tz) if tz else datetime.now().astimezone().tzinfo
-        hour, minute = (int(x) for x in value.split(" ", 1)[1].split(":"))
-        day = datetime.now(zone) + timedelta(days=1)
-        return day.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
-    parsed = datetime.fromisoformat(value)
+    zone = ZoneInfo(tz) if tz else None
+    match = re.fullmatch(r"tomorrow (\d{1,2}):(\d{2})", value.strip())
+    if match:
+        wall = time(int(match.group(1)), int(match.group(2)))
+        if zone:
+            day = datetime.now(zone).date() + timedelta(days=1)
+            return datetime.combine(day, wall, tzinfo=zone).isoformat()
+        # A naive local time's .astimezone() takes the offset in force on THAT day, so a
+        # daylight-saving change overnight still lands on the right wall-clock time.
+        day = date.today() + timedelta(days=1)
+        return datetime.combine(day, wall).astimezone().isoformat()
+    # fromisoformat() only accepts a trailing "Z" from Python 3.11 on.
+    parsed = datetime.fromisoformat(re.sub(r"[zZ]$", "+00:00", value.strip()))
     if parsed.tzinfo is None:
-        if not tz:
+        if not zone:
             raise SystemExit("Give the time an offset (+02:00 / Z) or pass --tz.")
-        parsed = parsed.replace(tzinfo=ZoneInfo(tz))
+        parsed = parsed.replace(tzinfo=zone)
     return parsed.isoformat()
 
 
