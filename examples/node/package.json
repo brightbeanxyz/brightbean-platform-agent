@@ -1,0 +1,7 @@
+{
+  "name": "brightbean-platform-examples",
+  "private": true,
+  "description": "Runnable BrightBean API and MCP examples. Node 18+, no dependencies.",
+  "type": "module",
+  "engines": { "node": ">=18" }
+}

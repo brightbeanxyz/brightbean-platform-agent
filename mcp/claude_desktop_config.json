@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "brightbean": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://api-platform.brightbean.xyz/api/v1/mcp",
+        "--header",
+        "Authorization:${AUTH_HEADER}"
+      ],
+      "env": {
+        "AUTH_HEADER": "Bearer bb_live_REPLACE_WITH_YOUR_KEY"
+      }
+    }
+  }
+}

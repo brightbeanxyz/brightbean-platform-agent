@@ -1,0 +1,19 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "brightbean-key",
+      "description": "BrightBean API key (bb_live_…)",
+      "password": true
+    }
+  ],
+  "servers": {
+    "brightbean": {
+      "type": "http",
+      "url": "https://api-platform.brightbean.xyz/api/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer ${input:brightbean-key}"
+      }
+    }
+  }
+}
