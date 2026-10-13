@@ -104,6 +104,8 @@ From the answer, keep:
 
 | Tool | Permission | REST | Key arguments |
 |---|---|---|---|
+| `list_references` | read | `GET /references` | `platform?`, `search?`, `kind?` (`all`/`workspace`/`built_in`) |
+| `create_post_from_reference` | create_posts | `POST /references/{id}/posts` | literal `referenceKey`, `topicId?`, `channel?`, `accountId?`, `note?`, slot maps, `idempotencyKey?` |
 | `social_list_accounts` | read | `GET /accounts/` | none |
 | `social_list_boards` | read | `GET /accounts/{id}/boards` | `accountId` (Pinterest) |
 | `social_get_tiktok_creator_info` | read | `GET /accounts/{id}/tiktok-creator-info` | `accountId`. Call it before **every** TikTok post |
@@ -146,7 +148,8 @@ The channel's `optionsSchema` has the exact JSON Schema.
 
 ### What comes back
 
-- **Writes** answer `{post, routed}`. `routed` is one of:
+- **Reference drafting** requires the complete References release. Discover `list_references` first; pass its literal `ws:`/`bi:` key to `create_post_from_reference`. REST URL-encodes the key once. It returns `jobId`, dispatch `state`, explicit `refusal` and `statusUrl`, not a finished post. Poll that REST path with the same credential to get `postId`; paid footage must be confirmed in BrightBean. The server chooses allowed fitting accounts automatically and freezes an immutable assignment. Neither call publishes, and new Reference analysis is not exposed through public V1.
+- **Other publishing writes** answer `{post, routed}`. `routed` is one of:
   - `draft`: saved;
   - `enacted`: scheduled, queued or publishing;
   - `pending_approval`: sent to Review, waiting for a person.
@@ -178,7 +181,7 @@ The channel's `optionsSchema` has the exact JSON Schema.
    `idempotencyKey` in the body or arguments. Use a fresh value per intent, and the same
    value for retries.
    - A retry is never repeated within 24 h.
-   - The same key with a different body is a 422.
+   - The same key with different input is refused: 409 for Reference drafting, 422 for ordinary publishing writes.
    - **Writes that take no `idempotencyKey`:** `social_update_draft` / PATCH,
      `social_delete_draft` / DELETE, `social_sign_upload_parts` and
      `social_finalize_media_upload` (REST `/parts`, `/complete`).
@@ -257,3 +260,23 @@ The channel's `optionsSchema` has the exact JSON Schema.
 - [examples/](examples/): runnable Python, Node and shell scripts
 - [mcp/](mcp/README.md): MCP client setup
 - [docs/openapi.json](docs/openapi.json) and [docs/mcp-tools.json](docs/mcp-tools.json): machine-readable snapshots
+
+## Messaging catalogue
+
+These tools require a messaging-enabled workspace and their separate scopes. Follow the
+current tool schemas and [MCP reference](reference/mcp-tools.md); do not infer publishing
+permissions from inbox access. Available names:
+
+- `inbox_list`: List inbox items.
+- `inbox_get`: Read an inbox item.
+- `inbox_reply`: Reply to a comment.
+- `conversation_send`: Send a conversation message.
+- `inbox_update`: Update an inbox item.
+- `contacts_list`: List contacts.
+- `contacts_get`: Read a contact.
+- `contacts_create`: Create a contact.
+- `contacts_update`: Edit a contact.
+- `contacts_add_tag`: Tag a contact.
+- `contacts_remove_tag`: Untag a contact.
+- `flow_start`: Start a flow or sequence.
+- `automations_list`: List automations.
