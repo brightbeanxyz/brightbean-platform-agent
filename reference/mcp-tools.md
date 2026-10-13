@@ -6,7 +6,7 @@ https://api-platform.brightbean.xyz/api/v1/mcp
 
 (staging: `https://api-platform-staging.brightbean.xyz/api/v1/mcp`)
 
-The same 20 tools work for every MCP client. Each tool **is** a REST route: same handler,
+The same permission-filtered catalogue works for every MCP client. Each tool **is** a REST route: same handler,
 same permission, same validation, same limits. [rest-api.md](rest-api.md) has the object
 shapes. This file covers what is specific to MCP. Client setup (Claude, Cursor, VS Code,
 Codex…) is in [`../mcp/`](../mcp/README.md).
@@ -363,3 +363,33 @@ Returns the media asset. Its `id` (= `mediaAssetId`) goes in `mediaAssetIds`. No
 
 Pass **exactly one** of `postId`, `platformPostId` or `accountId`. Returns the same body as
 the REST analytics routes.
+
+## Additional catalogue tools
+
+Availability follows the deployment and the credential's scopes. References use the
+complete-release routes described in [rest-api.md](rest-api.md#references-complete-release-api).
+
+| Tool | Purpose | Input |
+|---|---|---|
+| `list_references` | List References | See `docs/mcp-tools.json` for the strict schema |
+| `create_post_from_reference` | Draft from a Reference | See `docs/mcp-tools.json` for the strict schema |
+| `inbox_list` | List inbox items | See `docs/mcp-tools.json` for the strict schema |
+| `inbox_get` | Read an inbox item | See `docs/mcp-tools.json` for the strict schema |
+| `inbox_reply` | Reply to a comment | See `docs/mcp-tools.json` for the strict schema |
+| `conversation_send` | Send a conversation message | See `docs/mcp-tools.json` for the strict schema |
+| `inbox_update` | Update an inbox item | See `docs/mcp-tools.json` for the strict schema |
+| `contacts_list` | List contacts | See `docs/mcp-tools.json` for the strict schema |
+| `contacts_get` | Read a contact | See `docs/mcp-tools.json` for the strict schema |
+| `contacts_create` | Create a contact | See `docs/mcp-tools.json` for the strict schema |
+| `contacts_update` | Edit a contact | See `docs/mcp-tools.json` for the strict schema |
+| `contacts_add_tag` | Tag a contact | See `docs/mcp-tools.json` for the strict schema |
+| `contacts_remove_tag` | Untag a contact | See `docs/mcp-tools.json` for the strict schema |
+| `flow_start` | Start a flow or sequence | See `docs/mcp-tools.json` for the strict schema |
+| `automations_list` | List automations | See `docs/mcp-tools.json` for the strict schema |
+
+`list_references` accepts optional `platform`, `search` and `kind` and returns the safe
+canonical-key catalogue. `create_post_from_reference` takes a **literal**, unencoded
+`referenceKey` from that list, optional topic/account/channel/note and slot maps, and a
+retry `idempotencyKey`. Its result is an asynchronous job rather than `{post,routed}`.
+Poll `statusUrl` over REST with the same credential to obtain the resulting post ID.
+Neither tool publishes; paid footage still requires the BrightBean confirmation flow.

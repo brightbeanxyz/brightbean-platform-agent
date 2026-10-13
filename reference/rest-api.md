@@ -16,7 +16,7 @@ Content-Type: application/json           # on requests with a body
 - **JSON in, JSON out.** Field names are camelCase. A few error fields are snake_case
   (`retry_after`, `available_at`).
 - **Trailing slash optional.** `/api/v1/posts/` and `/api/v1/posts` are the same route.
-- **Ids are UUIDs.** A path id that isn't a UUID is a 404.
+- **Ids are UUIDs**, except the References routes, which take canonical `ws:`/`bi:` keys from their catalogue, URL-encoded once. Other path ids retain UUID validation.
 - **Times are ISO 8601 with an offset.** For example `2026-10-06T09:00:00+02:00` or
   `2026-10-06T07:00:00Z`. A time without an offset is a 422.
 - **Bodies are strict.** An unknown field is a 422 `invalid_request`. Never send fields that
@@ -55,6 +55,22 @@ Content-Type: application/json           # on requests with a body
 | POST | `/api/v1/media/uploads` | `media_request_upload` | `upload_media` | `social_request_media_upload` |
 | POST | `/api/v1/media/uploads/{id}/parts` | `media_sign_parts` | `upload_media` | `social_sign_upload_parts` |
 | POST | `/api/v1/media/uploads/{id}/complete` | `media_complete_upload` | `upload_media` | `social_finalize_media_upload` |
+| GET | `/api/v1/inbox/items` | `inbox_list` | `read_inbox` | `inbox_list` |
+| GET | `/api/v1/inbox/items/{id}` | `inbox_get` | `read_inbox` | `inbox_get` |
+| PATCH | `/api/v1/inbox/items/{id}` | `inbox_update` | `reply_inbox` | `inbox_update` |
+| POST | `/api/v1/inbox/items/{id}/replies` | `inbox_reply` | `reply_inbox` | `inbox_reply` |
+| POST | `/api/v1/conversations/{id}/messages` | `conversation_send` | `reply_inbox` | `conversation_send` |
+| GET | `/api/v1/contacts` | `contact_list` | `read_contacts` | `contacts_list` |
+| POST | `/api/v1/contacts` | `contact_create` | `write_contacts` | `contacts_create` |
+| GET | `/api/v1/contacts/{id}` | `contact_get` | `read_contacts` | `contacts_get` |
+| PATCH | `/api/v1/contacts/{id}` | `contact_update` | `write_contacts` | `contacts_update` |
+| POST | `/api/v1/contacts/{id}/tags` | `contact_add_tag` | `write_contacts` | `contacts_add_tag` |
+| DELETE | `/api/v1/contacts/{id}/tags/{tagId}` | `contact_remove_tag` | `write_contacts` | `contacts_remove_tag` |
+| POST | `/api/v1/contacts/{id}/flows` | `flow_start` | `run_automations` | `flow_start` |
+| GET | `/api/v1/automations` | `automation_list` | `run_automations` | `automations_list` |
+| GET | `/api/v1/references` | `reference_list` | `read` | `list_references` |
+| POST | `/api/v1/references/{id}/posts` | `reference_create_post` | `create_posts` | `create_post_from_reference` |
+| GET | `/api/v1/references/{id}/posts/{jobId}` | `reference_draft_status` | `read` | `none` |
 
 Only one file upload has no REST route: `social_upload_media` (a small base64 file in one
 call) exists on MCP only.
@@ -536,3 +552,44 @@ Trust this file:
    It takes no `Idempotency-Key`.
 6. A create whose `delivery` is refused leaves a draft whose id the error doesn't carry
    (see above).
+
+## References: complete-release API
+
+These routes require the complete References release. Discover available operations in
+`GET /api/v1/openapi.json` before using an older deployment.
+
+`GET /api/v1/references` (`read`) returns `{data}` with ready workspace References and
+platform-authored built-ins. Optional `platform`, `search` and `kind` (`all`, `workspace`,
+`built_in`) filters apply to the catalogue. Each item contains `key`, `name`, `platforms`,
+`postType`, `summary`, `hasTemplate`, `needsFootage` and `sourceKind`. Source media,
+credentials, embeddings, compiled templates and account statistics are excluded.
+
+Use the returned key, URL-encoded once, in `POST /api/v1/references/{id}/posts`
+(`create_posts`). The strict JSON body accepts nullable `topicId`, `channel`, `accountId`
+and `note`, optional `slotSources` and `mediaAssetIds` maps keyed by slot, and an
+optional `idempotencyKey`. Omit the account/channel/topic for automatic selection.
+Only allowed fitting connected accounts are considered. Reference originals are never
+drafting assets. The caller cannot supply snapshot, actor, job, card or template fields.
+
+A successful submission answers **202** with `referenceKey`, `jobId`, dispatch `state`,
+`refusal` (null or `{code,message,reason}`) and `statusUrl`; the Location header points
+to the same status path. Retry the same idempotency key; changed input or a different
+Reference under that key refuses with 409 `idempotency_mismatch`. The assignment freezes
+the Guide, slots, template version/hash and brand inputs. It never publishes.
+
+Poll `GET /api/v1/references/{id}/posts/{jobId}` (`read`), using the **same originating
+credential**. It returns the dispatch `state`, job `status`, nullable `postId`/`postStatus`,
+`refusal` and `needsFootageConfirmation`. Another credential or a job on restricted
+channels is 404. Once a post exists, use the normal post routes. Confirm any paid footage
+in BrightBean; the public API does not authorize it automatically. Stopped/revoked keys
+cannot start or resume work; a later human edit uses that person's permissions. Disabled
+References refuse with 403, and insufficient billing access with 402. Creating a new
+Reference through public REST is outside V1.
+
+## Chat operations
+
+Inbox, contact and automation routes are available only in messaging-enabled workspaces.
+Their scopes are separate from publishing. See the saved OpenAPI schemas for strict
+bodies and response fields; ordinary publishing account lists exclude WhatsApp/Telegram.
+Replies, sends and automation starts preserve normal channel scope, consent, metering
+and retry rules. Internal notes, raw metadata and source attachment URLs are excluded.

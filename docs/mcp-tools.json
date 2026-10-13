@@ -6,12 +6,1048 @@
         "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": true,
+        "title": "List References"
+      },
+      "description": "List ready workspace and platform-authored built-in References. Use the returned canonical key to start a draft. This catalogue contains no original media or source copy.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "kind": {
+            "default": "all",
+            "enum": [
+              "workspace",
+              "built_in",
+              "all"
+            ],
+            "type": "string"
+          },
+          "platform": {
+            "enum": [
+              "facebook",
+              "instagram",
+              "threads",
+              "linkedin",
+              "tiktok",
+              "youtube",
+              "pinterest",
+              "bluesky",
+              "mastodon",
+              "google_business",
+              "devto"
+            ],
+            "type": "string"
+          },
+          "search": {
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_references",
+      "title": "List References"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Draft from a Reference"
+      },
+      "description": "Start an asynchronous draft from a canonical Reference key returned by list_references. Only channels allowed for this connection can be selected; omit accountId and channel for automatic selection. Nothing is published. Track the returned statusUrl with the same credential. Paid footage requires confirmation in BrightBean. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "accountId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "facebook",
+                  "instagram",
+                  "threads",
+                  "linkedin",
+                  "tiktok",
+                  "youtube",
+                  "pinterest",
+                  "bluesky",
+                  "mastodon",
+                  "google_business",
+                  "devto"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "mediaAssetIds": {
+            "additionalProperties": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 100,
+              "minLength": 1
+            },
+            "type": "object"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "referenceKey": {
+            "description": "The canonical ws: or bi: key returned by list_references. Pass it literally, without URL encoding.",
+            "maxLength": 123,
+            "pattern": "^(?:ws:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|bi:[a-z0-9][a-z0-9_-]{0,119})$",
+            "type": "string"
+          },
+          "slotSources": {
+            "additionalProperties": {
+              "enum": [
+                "brand_photo",
+                "generated",
+                "library",
+                "user_footage"
+              ],
+              "type": "string"
+            },
+            "propertyNames": {
+              "maxLength": 100,
+              "minLength": 1
+            },
+            "type": "object"
+          },
+          "topicId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "referenceKey"
+        ],
+        "type": "object"
+      },
+      "name": "create_post_from_reference",
+      "title": "Draft from a Reference"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List inbox items"
+      },
+      "description": "List this connection's inbox items, with filters and a cursor.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "accountIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "const": "unassigned",
+                "type": "string"
+              }
+            ]
+          },
+          "automation": {
+            "items": {
+              "enum": [
+                "opted_out",
+                "paused",
+                "needs_person",
+                "handled_by_flow"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "type": "array"
+          },
+          "cursor": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "from": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "includeArchived": {
+            "type": "boolean"
+          },
+          "kinds": {
+            "items": {
+              "enum": [
+                "comment",
+                "mention",
+                "dm",
+                "conversation"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "type": "array"
+          },
+          "labelIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "platforms": {
+            "items": {
+              "enum": [
+                "facebook",
+                "instagram",
+                "threads",
+                "linkedin",
+                "tiktok",
+                "youtube",
+                "pinterest",
+                "bluesky",
+                "mastodon",
+                "google_business",
+                "devto",
+                "whatsapp",
+                "telegram"
+              ],
+              "type": "string"
+            },
+            "maxItems": 13,
+            "type": "array"
+          },
+          "q": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "sentiments": {
+            "items": {
+              "enum": [
+                "positive",
+                "neutral",
+                "negative"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "type": "array"
+          },
+          "statuses": {
+            "items": {
+              "enum": [
+                "unread",
+                "open",
+                "resolved",
+                "archived"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "type": "array"
+          },
+          "tab": {
+            "enum": [
+              "all",
+              "mine",
+              "unassigned"
+            ],
+            "type": "string"
+          },
+          "to": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "inbox_list",
+      "title": "List inbox items"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Read an inbox item"
+      },
+      "description": "Read an inbox item, its public thread and safe post context. Internal notes and attachment URLs are excluded.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "itemId": {
+            "description": "The inbox item's id, from inbox_list.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "type": "object"
+      },
+      "name": "inbox_get",
+      "title": "Read an inbox item"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Reply to a comment"
+      },
+      "description": "Reply to a public comment. Set private to true to send a private reply. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "itemId": {
+            "description": "The inbox item's id, from inbox_list.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "private": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "itemId",
+          "body"
+        ],
+        "type": "object"
+      },
+      "name": "inbox_reply",
+      "title": "Reply to a comment"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Send a conversation message"
+      },
+      "description": "Send text, library media or a WhatsApp template in a conversation. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "conversationId": {
+            "description": "The conversation's id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "message": {
+            "additionalProperties": false,
+            "properties": {
+              "blocks": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "text": {
+                          "maxLength": 10000,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "type": {
+                          "const": "text",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "text"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "caption": {
+                          "maxLength": 1000,
+                          "type": "string"
+                        },
+                        "mediaId": {
+                          "format": "uuid",
+                          "type": "string"
+                        },
+                        "type": {
+                          "enum": [
+                            "image",
+                            "audio",
+                            "video",
+                            "file"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "mediaId"
+                      ],
+                      "type": "object"
+                    }
+                  ]
+                },
+                "maxItems": 10,
+                "type": "array"
+              },
+              "tag": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "HUMAN_AGENT",
+                      "CONFIRMED_EVENT_UPDATE",
+                      "POST_PURCHASE_UPDATE",
+                      "ACCOUNT_UPDATE"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "whatsappTemplate": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "templateId": {
+                        "format": "uuid",
+                        "type": "string"
+                      },
+                      "variables": {
+                        "additionalProperties": {
+                          "maxLength": 1024,
+                          "type": "string"
+                        },
+                        "propertyNames": {
+                          "maxLength": 64
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "templateId",
+                      "variables"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "blocks"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "conversationId",
+          "message"
+        ],
+        "type": "object"
+      },
+      "name": "conversation_send",
+      "title": "Send a conversation message"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Update an inbox item"
+      },
+      "description": "Assign an inbox item, change its status or take over/hand back a conversation. Requires Read inbox and Reply inbox. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "assigneeUserId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "itemId": {
+            "description": "The inbox item's id, from inbox_list.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "unread",
+              "open",
+              "resolved",
+              "archived"
+            ],
+            "type": "string"
+          },
+          "takeover": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "itemId"
+        ],
+        "type": "object"
+      },
+      "name": "inbox_update",
+      "title": "Update an inbox item"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List contacts"
+      },
+      "description": "List workspace contacts. Channel summaries include only this connection's allowed identities.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "enum": [
+              "instagram",
+              "facebook",
+              "whatsapp",
+              "telegram"
+            ],
+            "type": "string"
+          },
+          "cursor": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "q": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "segmentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "tagIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "name": "contacts_list",
+      "title": "List contacts"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "Read a contact"
+      },
+      "description": "Read a workspace contact. Identities on restricted channels are omitted.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "contactId": {
+            "description": "The contact's id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      },
+      "name": "contacts_get",
+      "title": "Read a contact"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Create a contact"
+      },
+      "description": "Create a workspace contact; this does not grant messaging consent. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "name": "contacts_create",
+      "title": "Create a contact"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Edit a contact"
+      },
+      "description": "Edit a contact's details. Omitted fields stay unchanged; null clears a field. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "contactId": {
+            "description": "The contact's id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      },
+      "name": "contacts_update",
+      "title": "Edit a contact"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Tag a contact"
+      },
+      "description": "Tag a contact, by tagId or name. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "contactId": {
+            "description": "The contact's id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tagId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      },
+      "name": "contacts_add_tag",
+      "title": "Tag a contact"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false,
+        "title": "Untag a contact"
+      },
+      "description": "Remove a tag from a contact. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "contactId": {
+            "description": "The contact's id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "tagId": {
+            "description": "The tag's id.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId",
+          "tagId"
+        ],
+        "type": "object"
+      },
+      "name": "contacts_remove_tag",
+      "title": "Untag a contact"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false,
+        "title": "Start a flow or sequence"
+      },
+      "description": "Start a live flow with an API trigger (optional key), or enroll in an active sequence. Supply exactly one of flowId and sequenceId. Requires all workspace channels. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "contactId": {
+            "description": "The contact's id.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "flowId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "key": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "sequenceId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contactId"
+        ],
+        "type": "object"
+      },
+      "name": "flow_start",
+      "title": "Start a flow or sequence"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List automations"
+      },
+      "description": "List workspace flows, sequences and inbox rules with their status. Broadcast mini-flows are excluded.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "automations_list",
+      "title": "List automations"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
         "title": "List channels"
       },
       "description": "List the workspace's connected social accounts: over this connection, only the channels it may post to, each with its platform, handle, status, what it can take (character limit, title, first comment, link, board) and the JSON Schema of its per-channel `options`.",
       "inputSchema": {
         "additionalProperties": false,
-        "properties": {},
+        "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "name": "social_list_accounts",
@@ -33,6 +1069,12 @@
             "description": "The channel's id, from social_list_accounts.",
             "format": "uuid",
             "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
           }
         },
         "required": [
@@ -51,13 +1093,19 @@
         "readOnlyHint": true,
         "title": "Read TikTok settings"
       },
-      "description": "Read what a TikTok channel allows right now: its privacy levels, whether comments, duets and stitches can be turned on, and its longest video. TikTok requires this read before each post; set `perAccount[<accountId>].options.tiktok.privacyLevel` to one of the levels.",
+      "description": "Read what a TikTok channel allows right now: its privacy levels, whether comments, duets and stitches can be turned on, and its longest video. TikTok requires this read before each post; set `perAccount[<accountId>].options.tiktok.privacyLevel` to one of the levels. A TikTok post is one video or a photo carousel of up to 35 images. Duets, stitches and the cover frame apply to a video; `autoAddMusic` applies to a photo carousel.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "accountId": {
             "description": "The channel's id, from social_list_accounts.",
             "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -84,6 +1132,12 @@
           "accountId": {
             "description": "The channel's id, from social_list_accounts.",
             "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
             "type": "string"
           }
         },
@@ -115,6 +1169,12 @@
           "cursor": {
             "description": "The previous page's `nextCursor`.",
             "format": "uuid",
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
             "type": "string"
           },
           "limit": {
@@ -150,6 +1210,12 @@
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
           "postId": {
             "description": "The post's id.",
             "format": "uuid",
@@ -274,7 +1340,7 @@
             "type": "string"
           },
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -290,7 +1356,7 @@
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 35,
             "type": "array"
           },
           "perAccount": {
@@ -343,6 +1409,15 @@
                           },
                           "type": "object"
                         },
+                        "instagram": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "aiGenerated": {
+                              "type": "boolean"
+                            }
+                          },
+                          "type": "object"
+                        },
                         "tiktok": {
                           "additionalProperties": false,
                           "properties": {
@@ -356,6 +1431,9 @@
                               "type": "boolean"
                             },
                             "allowStitch": {
+                              "type": "boolean"
+                            },
+                            "autoAddMusic": {
                               "type": "boolean"
                             },
                             "brandContent": {
@@ -389,6 +1467,9 @@
                             "categoryId": {
                               "pattern": "^\\d{1,4}$",
                               "type": "string"
+                            },
+                            "containsSyntheticMedia": {
+                              "type": "boolean"
                             },
                             "madeForKids": {
                               "type": "boolean"
@@ -519,6 +1600,12 @@
               "null"
             ]
           },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
           "linkUrl": {
             "anyOf": [
               {
@@ -535,7 +1622,7 @@
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 20,
+            "maxItems": 35,
             "type": "array"
           },
           "perAccount": {
@@ -657,6 +1744,36 @@
                             }
                           ]
                         },
+                        "instagram": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "aiGenerated": {
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "not": {}
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
                         "tiktok": {
                           "anyOf": [
                             {
@@ -714,6 +1831,23 @@
                                   ]
                                 },
                                 "allowStitch": {
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "not": {}
+                                        },
+                                        {
+                                          "type": "boolean"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "autoAddMusic": {
                                   "anyOf": [
                                     {
                                       "anyOf": [
@@ -845,6 +1979,23 @@
                                         {
                                           "pattern": "^\\d{1,4}$",
                                           "type": "string"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "containsSyntheticMedia": {
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "not": {}
+                                        },
+                                        {
+                                          "type": "boolean"
                                         }
                                       ]
                                     },
@@ -1035,7 +2186,7 @@
         "additionalProperties": false,
         "properties": {
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1145,7 +2296,7 @@
             ]
           },
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1178,7 +2329,7 @@
         "additionalProperties": false,
         "properties": {
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1209,6 +2360,12 @@
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
           "postId": {
             "description": "The post's id.",
             "format": "uuid",
@@ -1241,7 +2398,7 @@
             "type": "string"
           },
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1304,7 +2461,7 @@
         "additionalProperties": false,
         "properties": {
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1336,7 +2493,7 @@
         "additionalProperties": false,
         "properties": {
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1378,7 +2535,7 @@
             "type": "string"
           },
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1419,7 +2576,7 @@
             "type": "string"
           },
           "idempotencyKey": {
-            "description": "Retrying with the same key never repeats the work. Also accepted as the Idempotency-Key header.",
+            "description": "Retry key. A write returns the first result for 24 hours.",
             "maxLength": 128,
             "minLength": 1,
             "type": "string"
@@ -1470,6 +2627,12 @@
             "exclusiveMinimum": 0,
             "type": "integer"
           },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
           "uploadId": {
             "description": "The `mediaAssetId` social_request_media_upload returned.",
             "format": "uuid",
@@ -1507,6 +2670,12 @@
             "exclusiveMinimum": 0,
             "maximum": 16384,
             "type": "integer"
+          },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
           },
           "parts": {
             "description": "Each uploaded part's number and the ETag R2 returned for it.",
@@ -1568,6 +2737,12 @@
             "format": "uuid",
             "type": "string"
           },
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
           "platformPostId": {
             "description": "One channel's copy of a post.",
             "format": "uuid",
@@ -1579,9 +2754,9 @@
             "type": "string"
           },
           "windowDays": {
-            "description": "Channel analytics only.",
-            "maximum": 365,
-            "minimum": 1,
+            "description": "Channel analytics only. Snapshots are collected for a 30-day window only, so this takes 30 (the default) and nothing else.",
+            "maximum": 30,
+            "minimum": 30,
             "type": "integer"
           }
         },
