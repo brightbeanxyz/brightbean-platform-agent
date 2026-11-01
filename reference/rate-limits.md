@@ -56,7 +56,8 @@ queued and published posts all count, by the time they go out.
 | TikTok | 15 |
 | DEV | 10 |
 
-A workspace admin can change a channel's cap. The answer depends on how you asked:
+These are the caps the API enforces today; nothing in the app changes them. The answer
+depends on how you asked:
 
 **Scheduled, queued or prioritised** (a fixed time; waiting doesn't help):
 

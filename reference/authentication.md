@@ -22,7 +22,8 @@ The user does this in the web app. An agent cannot create keys.
    else sees "Ask a workspace admin for an API key."
 3. Fill in the dialog:
    - **Name**: e.g. "Zapier" (up to 80 characters).
-   - **Channels**: the channels the key may use (at least one; up to 200).
+   - **Channels**: the channels the key may use (at least one; up to 200), or **all
+     workspace channels**, which includes channels connected later.
    - **Permissions**: see the table below.
    - **Expires**: Never, In 30 days, In 90 days (the default), In 1 year, or On a date.
 4. Click **Create key**. The key is shown **once** ("You won't see this key again").
@@ -40,6 +41,15 @@ The reveal screen also shows two ready-made commands: a `curl` to `/api/v1/me/` 
 | `upload_media` | Upload media | All media upload calls | On |
 | `view_analytics` | Read analytics | Account and post analytics | On |
 | `publish_directly` | Publish and schedule without approval | `schedule`, `publish`, `cancel`; deleting a scheduled or queued post; deliveries skip Review (unless the workspace requires approval for everyone) | **Off** |
+| `read_inbox` | Read inbox | Chat: list and read inbox items, comments, messages and threads | Off |
+| `reply_inbox` | Reply and manage inbox | Chat: reply, send conversation messages, assign, change status, take over and hand back | Off |
+| `read_contacts` | Read contacts | Chat: read contacts, tags and allowed channel identities | Off |
+| `write_contacts` | Create and edit contacts | Chat: create contacts, edit their fields, add and remove tags | Off |
+| `run_automations` | Run automations | Chat: list automations, start flows, enroll contacts in sequences. Needs **all workspace channels**. | Off |
+
+The five Chat permissions are offered only in workspaces with Chat; elsewhere the Chat routes
+and tools answer 404 or are hidden. Keys made before Chat existed don't get them on their
+own: edit the key and tick them. OAuth connections must reconnect to gain them.
 
 A key's effective permissions are the ones ticked on it **and** held by the person who made
 it, checked on every request. `GET /api/v1/me/` returns the effective set.

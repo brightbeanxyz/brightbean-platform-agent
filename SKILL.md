@@ -45,7 +45,8 @@ Don't use it:
 
 **Check for tools first.** If tools named `social_list_accounts`, `social_create_draft` and
 so on are available, the BrightBean MCP server is connected: use them. If not, use REST,
-or help the user connect (see [`mcp/`](mcp/README.md)).
+or help the user connect (see [`mcp/`](mcp/README.md)). A person setting it up can follow
+the step-by-step page at https://brightbean.xyz/agents/.
 
 **Getting a key (the user does this; you can't):**
 1. Open [platform.brightbean.xyz/settings/workspace/api](https://platform.brightbean.xyz/settings/workspace/api)
