@@ -136,11 +136,23 @@ refused.
 | `categoryId` | from `/accounts/{id}/youtube-categories` (`^\d{1,4}$`) |
 | `thumbnail` | `{"assetId": "<image mediaAssetId>"}` or `{"coverFrame": true}` |
 
+**`instagram`**
+
+| Field | Type |
+|---|---|
+| `aiGenerated` | boolean |
+| `publishAs` | `feed` \| `story`. Left out = `feed`. |
+
 **`facebook`**
 
 | Field | Type |
 |---|---|
-| `publishAs` | `video` \| `reel`: for a video post |
+| `publishAs` | `video` \| `reel` (for a video post) \| `story` |
+
+A Story takes exactly one image or one video; a Story video must be 3–60 seconds long, or
+the post is refused (trim it, or leave out `story` to post it as a feed post on Instagram
+or a Page video on Facebook). A video of unknown length is not refused. With any other media, a
+`story` choice is ignored and the post goes out as an ordinary post.
 
 **`devto`**
 

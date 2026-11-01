@@ -142,7 +142,8 @@ is optional.
 (`""` = none on this channel), `boardId` (Pinterest), and `options`:
 - `tiktok`: `privacyLevel`, `allowComment`/`allowDuet`/`allowStitch`, disclosure flags, `aiGenerated`, `coverMs`
 - `youtube`: `privacyStatus`, `madeForKids`, `tags`, `categoryId`, `thumbnail`
-- `facebook`: `publishAs` (`video`|`reel`)
+- `instagram`: `aiGenerated`, `publishAs` (`feed`|`story`)
+- `facebook`: `publishAs` (`video`|`reel`|`story`). A Story is exactly one image or one video (3–60 s).
 - `devto`: `tags`, `canonicalUrl`
 
 The channel's `optionsSchema` has the exact JSON Schema.

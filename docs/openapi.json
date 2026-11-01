@@ -9,7 +9,7 @@
     }
   },
   "info": {
-    "description": "Publish posts and work with your BrightBean inbox, contacts and automations from scripts or agents.\n\n**Using an AI agent?** Point it at [the agent guide](https://github.com/brightbeanxyz/brightbean-platform-agent): its `SKILL.md` teaches this API and the MCP server, and `npx skills@^1 add brightbeanxyz/brightbean-platform-agent` installs it.\n\n## Getting started\nEvery path below is under `https://api-platform.brightbean.xyz`. Check your key with:\n```\ncurl https://api-platform.brightbean.xyz/api/v1/me/ \\\n  -H \"Authorization: Bearer <key>\" \\\n  -H \"User-Agent: my-agent/1.0\"\n```\nBodies are JSON. Times are ISO 8601 with an offset (`2026-10-06T09:00:00+02:00`). Ids are UUIDs except References, whose canonical `ws:` or `bi:` keys are returned by their catalogue and URL-encoded in paths. A list path works with or without its trailing slash (`/api/v1/posts/` or `/api/v1/posts`).\n\n**Send a User-Agent naming your client.** The API sits behind Cloudflare, which blocks Python's built-in default (`Python-urllib/3.x`) with a plain-text `403 error code: 1010` before the request reaches BrightBean. Any value of your own gets through. `requests`, `httpx`, curl, Node, Go and Java clients already send one that does.\n\n## Keys\nCreate a key in BrightBean under Settings → Workspace → API & MCP. Send it on every request as `Authorization: Bearer <key>`. A key belongs to one workspace, may use only the channels picked for it, and can do only what its permissions allow AND what the person who made it can still do. Revoking a key stops it within 60 seconds.\n\nPermissions: `read` (Read channels and posts), `create_posts` (Create drafts and send for approval), `upload_media` (Upload media), `view_analytics` (Read analytics), `publish_directly` (Publish and schedule without approval), `read_inbox` (Read inbox), `reply_inbox` (Reply and manage inbox), `read_contacts` (Read contacts), `write_contacts` (Create and edit contacts), `run_automations` (Run automations). Without `publish_directly`, or when the workspace requires approval for everyone, a post you ask to schedule or publish goes to Review in BrightBean, labelled with your key, and is carried out once someone approves it. The `routed` field says which happened.\n\n## References\nGET /api/v1/references lists ready workspace References and platform-authored built-ins; it contains no original media, source credentials, embeddings or compiled source. POST /api/v1/references/{id}/posts accepts the returned canonical key, URL-encoded, and starts a draft job. It answers 202 with jobId, state, refusal and statusUrl. Read statusUrl with the same credential to track completion and retrieve postId, then use the ordinary post routes. A Reference draft never publishes anything. Paid footage requires confirmation in BrightBean.\n\nAccount and channel may be omitted for automatic selection within the credential's allowed channels. Topic and note are optional. The server freezes the Guide, slots, template, brand and original credential authority; callers cannot supply job, actor, snapshot, card or template provenance. Authorization and channel grants are checked from fresh storage at submission, replay, dispatch and agent calls. A reused Reference draft idempotency key with different input is a 409 idempotency_mismatch. Disabled References are a 403; billing refusals are a 402. Creating a new Reference through the public API is outside V1.\n\n## Chat inbox, contacts and automations\nChat operations are available only in messaging-enabled workspaces; other workspaces answer 404. The five Chat scopes are optional and initially unchecked. Existing keys must explicitly select them. Existing OAuth/MCP connections must reconnect to gain the new scopes.\n\nChannel access is either selected channels or all workspace channels, including future channels. Existing credentials remain selected. WhatsApp and Telegram can be selected for Chat; post routes and account lists contain only publishing channels. Inbox items outside the allowed channels answer 404. Contacts stay workspace-wide, with restricted identities and channel summaries omitted. Starting flows or enrolling in sequences requires all-channel access (403 channel_restricted otherwise). The flow body has exactly one of flowId and sequenceId; key chooses an API trigger. A successful start answers 202.\n\nPublic conversation threads use PublicInboxMessage: the newest 200 messages, oldest first, with text and attachment kinds, never attachment URLs, notes, internal messages or raw metadata. Comment detail adds safe post context and sent public replies. API/MCP replies carry their credential name, respect opt-out and reach limits, and do not start a human pause or record a human first response. Public Instagram/Facebook replies also respect the contact throttle.\n\nEvery Chat write accepts the Idempotency-Key header (REST) or idempotencyKey argument (MCP). The claim lasts 24 hours and a replay repeats no provider calls, daily spending, assignment emails or announcements. Authorization and channel visibility are rechecked on replay. Without a key each call is a new operation.\n\n## Errors\nEvery error from the API is `{ \"error\": \"<code>\", \"detail\": \"<what went wrong>\" }`:\n- 402: Chat reach limit, with error chat_limit.\n- 401: missing, invalid, expired or revoked key.\n- 403: `missing permission: <permission>`, or a channel this key may not post to.\n- 404: not found, including any post on a channel this key can't see.\n- 409: the post is in the wrong state (editing one waiting for approval: withdraw it first), or a request with the same Idempotency-Key is still running.\n- 422: the content won't work: over a channel's limit, a first comment where a channel can't take one, a time without an offset or in the past, a channel's daily cap for that time (`available_at` says when it fits).\n- 405: wrong method for that path (`Allow` says which).\n- 413: the body is too large.\n- 429: too many requests (`tier`, `retry_after`, and a Retry-After header), or a channel's daily cap when publishing now.\n- 503: a temporary failure while handling an upload. Retry the same request.\n\nA 403 with a plain-text body `error code: 1010` comes from Cloudflare, not the API: send your own User-Agent (see Getting started).\n\nA create saves the draft first, then sends it on when it has a `delivery`. An error after the save carries the post's id as `post_id`. After a 4xx (media a channel requires, its daily cap) it is still a draft: fix it with `PATCH` and send it with `/submit`. After a 5xx, `GET` it first: it may have gone ahead. A 4xx without `post_id` saved nothing.\n\n## Limits\nPer key, per minute: 120 writes and 300 reads. Per workspace: 1000 writes a minute. Windows are 60 seconds and counted per Cloudflare location.\n\nChat adds global credential buckets: 60 reads, 20 writes and 60 contact writes per minute. Workspace buckets shared across keys and MCP connections allow 180 reads, 60 writes and 180 contact writes. Contact create/update/tag operations consume only their contact-write pair. Tiers are read, write, contact_write, api_read, api_write and api_contact_write. Existing Cloudflare limits continue to apply.\n\nAPI replies and sends share a workspace-local daily cap: 1,000 Free or 10,000 with effective Chat entitlement, unless staff overrides it. Zero blocks sends; null restores the default. The daily tier resets at local midnight, including DST. Every 429 returns {error, detail, tier, limit, remaining, retry_after} and Retry-After.\n\n## Retries\nSend an `Idempotency-Key` header (at most 128 characters; an empty one counts as none) on the writes that take one: `POST /api/v1/inbox/items/{id}/replies`, `POST /api/v1/conversations/{id}/messages`, `PATCH /api/v1/inbox/items/{id}`, `POST /api/v1/contacts`, `PATCH /api/v1/contacts/{id}`, `POST /api/v1/contacts/{id}/tags`, `DELETE /api/v1/contacts/{id}/tags/{tagId}`, `POST /api/v1/contacts/{id}/flows`, `POST /api/v1/references/{id}/posts`, `POST /api/v1/posts/`, `POST /api/v1/posts/{id}/duplicate`, `POST /api/v1/posts/{id}/submit`, `POST /api/v1/posts/{id}/schedule`, `POST /api/v1/posts/{id}/publish`, `POST /api/v1/posts/{id}/cancel`, `POST /api/v1/media/uploads`. Repeating a request with the same key within 24 hours never repeats the work; the same key with a different body is a 422. Chat REST writes use only the header; every MCP tool accepts an idempotencyKey argument. Publishing routes that already accept idempotencyKey in the body continue to do so. The other REST writes ignore the header: finishing an upload is safe to repeat anyway.\n\n## Uploading media\n1. `POST /api/v1/media/uploads` with the file's type and size. The answer holds URLs for the first parts (up to 8) and `partCount`.\n2. `PUT` each part's bytes (`partSize` each, the last one smaller) to its URL and keep the ETag header each answer returns.\n3. For a file with more parts, `POST /api/v1/media/uploads/{id}/parts` for up to 16 more URLs at a time. A URL expires, so ask for them as you go.\n4. `POST /api/v1/media/uploads/{id}/complete` with every part's number and ETag. Use the returned id in `mediaAssetIds`.\n\n## Polling for changes\n`GET /api/v1/posts/`, `GET /api/v1/posts/{id}` return an ETag. Send it back as `If-None-Match`: when nothing changed the answer is usually `304` and costs almost nothing (sometimes it is a `200` with a new ETag; treat that as a normal answer). No other route sends one. Or pass the previous response's `serverTime` as `updatedSince`. Changes can take up to a minute to show. Deleted posts are not reported by `updatedSince`; they answer 404.\n\n## Activity\nEvery call is logged under the key's Activity in Settings, without request bodies. Activity and \"last used\" can take up to 20 minutes to appear.\n\n## MCP\nThe MCP server is `https://api-platform.brightbean.xyz/api/v1/mcp` (Streamable HTTP, `POST`). It has the same permissions, limits and Activity log as REST.\n- **With an API key:** send it as `Authorization: Bearer <key>`, e.g. `claude mcp add --transport http brightbean https://api-platform.brightbean.xyz/api/v1/mcp --header \"Authorization: Bearer <key>\"`.\n- **With OAuth** (claude.ai, Claude Desktop): add the URL as a custom connector. The client finds everything from the `401`: discovery is at `/.well-known/oauth-protected-resource/api/v1/mcp`, and the endpoints are `/oauth/authorize/`, `/oauth/token/`, `/oauth/register` (dynamic client registration) and `/oauth/revoke_token/`. PKCE (`S256`) is required. The person approving picks the workspace, channels and permissions.",
+    "description": "Publish posts and work with your BrightBean inbox, contacts and automations from scripts or agents.\n\n**Using an AI agent?** Point it at [the agent guide](https://github.com/brightbeanxyz/brightbean-platform-agent): its `SKILL.md` teaches this API and the MCP server, and `npx skills@^1 add brightbeanxyz/brightbean-platform-agent` installs it.\n\n## Getting started\nEvery path below is under `https://api-platform.brightbean.xyz`. Check your key with:\n```\ncurl https://api-platform.brightbean.xyz/api/v1/me/ \\\n  -H \"Authorization: Bearer <key>\" \\\n  -H \"User-Agent: my-agent/1.0\"\n```\nBodies are JSON. Times are ISO 8601 with an offset (`2026-10-06T09:00:00+02:00`). Ids are UUIDs except References, whose canonical `ws:` or `bi:` keys are returned by their catalogue and URL-encoded in paths. A list path works with or without its trailing slash (`/api/v1/posts/` or `/api/v1/posts`).\n\n**Send a User-Agent naming your client.** The API sits behind Cloudflare, which blocks Python's built-in default (`Python-urllib/3.x`) with a plain-text `403 error code: 1010` before the request reaches BrightBean. Any value of your own gets through. `requests`, `httpx`, curl, Node, Go and Java clients already send one that does.\n\n## Keys\nCreate a key in BrightBean under Settings → Workspace → API & MCP. Send it on every request as `Authorization: Bearer <key>`. A key belongs to one workspace, may use only the channels picked for it, and can do only what its permissions allow AND what the person who made it can still do. Revoking a key stops it within 60 seconds.\n\nPermissions: `read` (Read channels and posts), `create_posts` (Create drafts and send for approval), `upload_media` (Upload media), `view_analytics` (Read analytics), `publish_directly` (Publish and schedule without approval), `read_inbox` (Read inbox), `reply_inbox` (Reply and manage inbox), `read_contacts` (Read contacts), `write_contacts` (Create and edit contacts), `run_automations` (Run automations). Without `publish_directly`, or when the workspace requires approval for everyone, a post you ask to schedule or publish goes to Review in BrightBean, labelled with your key, and is carried out once someone approves it. The `routed` field says which happened.\n\n## References\nGET /api/v1/references lists ready workspace References and platform-authored built-ins; it contains no original media, source credentials, embeddings or compiled source. POST /api/v1/references/{id}/posts accepts the returned canonical key, URL-encoded, and starts a draft job. It answers 202 with jobId, state, refusal and statusUrl. Read statusUrl with the same credential to track completion and retrieve postId, then use the ordinary post routes. A Reference draft never publishes anything. Paid footage requires confirmation in BrightBean.\n\nAccount and channel may be omitted for automatic selection within the credential's allowed channels. Topic and note are optional. The server freezes the Guide, slots, template, brand and original credential authority; callers cannot supply job, actor, snapshot, card or template provenance. Authorization and channel grants are checked from fresh storage at submission, replay, dispatch and agent calls. A reused Reference draft idempotency key with different input is a 409 idempotency_mismatch. Disabled References are a 403; billing refusals are a 402. Creating a new Reference through the public API is outside V1.\n\n## Chat inbox, contacts and automations\nChat operations are available only in messaging-enabled workspaces; other workspaces answer 404. The five Chat scopes are optional and initially unchecked. Existing keys must explicitly select them. Existing OAuth/MCP connections must reconnect to gain the new scopes.\n\nChannel access is either selected channels or all workspace channels, including future channels. Existing credentials remain selected. WhatsApp and Telegram can be selected for Chat; post routes and account lists contain only publishing channels. Inbox items outside the allowed channels answer 404. Contacts stay workspace-wide, with restricted identities and channel summaries omitted. Starting flows or enrolling in sequences requires all-channel access (403 channel_restricted otherwise). The flow body has exactly one of flowId and sequenceId; key chooses an API trigger. A successful start answers 202.\n\nPublic conversation threads use PublicInboxMessage: the newest 200 messages, oldest first, with text and attachment kinds, never attachment URLs, notes, internal messages or raw metadata. Comment detail adds safe post context, sent public replies and `canReplyPrivately`. API/MCP replies carry their credential name, respect opt-out and reach limits, and do not start a human pause or record a human first response. Public Instagram/Facebook replies also respect the contact throttle. Meta sometimes leaves out who wrote an Instagram or Facebook comment: a public reply to such a comment still works, is throttled per comment, and counts the comment as one person reached that month. A private reply needs the author, so it is refused with not_replyable (`canReplyPrivately` is false).\n\nEvery Chat write accepts the Idempotency-Key header (REST) or idempotencyKey argument (MCP). The claim lasts 24 hours and a replay repeats no provider calls, daily spending, assignment emails or announcements. Authorization and channel visibility are rechecked on replay. Without a key each call is a new operation.\n\n## Errors\nEvery error from the API is `{ \"error\": \"<code>\", \"detail\": \"<what went wrong>\" }`:\n- 402: a free Chat plan limit, with error chat_limit. `tier` says which (`contacts_reached`: 25 people a month; `automation_channels`: 2 channels; `live_automations`: 4), with `plan`, `limit`, `remaining` and, for the monthly count, `resets_at`. The Chat plan has none of these limits.\n- 401: missing, invalid, expired or revoked key.\n- 403: `missing permission: <permission>`, or a channel this key may not post to.\n- 404: not found, including any post on a channel this key can't see.\n- 409: the post is in the wrong state (editing one waiting for approval: withdraw it first), or a request with the same Idempotency-Key is still running.\n- 422: the content won't work: over a channel's limit, a first comment where a channel can't take one, a time without an offset or in the past, a channel's daily cap for that time (`available_at` says when it fits). An inbox reply is refused with not_replyable (the item can't take that reply: `detail` says why) or opted_out (the person opted out).\n- 405: wrong method for that path (`Allow` says which).\n- 413: the body is too large.\n- 429: too many requests (`tier`, `retry_after`, and a Retry-After header), or a channel's daily cap when publishing now.\n- 503: a temporary failure while handling an upload. Retry the same request.\n\nA 403 with a plain-text body `error code: 1010` comes from Cloudflare, not the API: send your own User-Agent (see Getting started).\n\nA create saves the draft first, then sends it on when it has a `delivery`. An error after the save carries the post's id as `post_id`. After a 4xx (media a channel requires, its daily cap) it is still a draft: fix it with `PATCH` and send it with `/submit`. After a 5xx, `GET` it first: it may have gone ahead. A 4xx without `post_id` saved nothing.\n\n## Limits\nPer key, per minute: 120 writes and 300 reads. Per workspace: 1000 writes a minute. Windows are 60 seconds and counted per Cloudflare location.\n\nChat adds global credential buckets: 60 reads, 20 writes and 60 contact writes per minute. Workspace buckets shared across keys and MCP connections allow 180 reads, 60 writes and 180 contact writes. Contact create/update/tag operations consume only their contact-write pair. Tiers are read, write, contact_write, api_read, api_write and api_contact_write. Existing Cloudflare limits continue to apply.\n\nAPI replies and sends share a workspace-local daily cap: 1,000 Free or 10,000 with effective Chat entitlement, unless staff overrides it. Zero blocks sends; null restores the default. The daily tier resets at local midnight, including DST. Every 429 returns {error, detail, tier, limit, remaining, retry_after} and Retry-After.\n\n## Retries\nSend an `Idempotency-Key` header (at most 128 characters; an empty one counts as none) on the writes that take one: `POST /api/v1/inbox/items/{id}/replies`, `POST /api/v1/conversations/{id}/messages`, `PATCH /api/v1/inbox/items/{id}`, `POST /api/v1/contacts`, `PATCH /api/v1/contacts/{id}`, `POST /api/v1/contacts/{id}/tags`, `DELETE /api/v1/contacts/{id}/tags/{tagId}`, `POST /api/v1/contacts/{id}/flows`, `POST /api/v1/references/{id}/posts`, `POST /api/v1/posts/`, `POST /api/v1/posts/{id}/duplicate`, `POST /api/v1/posts/{id}/submit`, `POST /api/v1/posts/{id}/schedule`, `POST /api/v1/posts/{id}/publish`, `POST /api/v1/posts/{id}/cancel`, `POST /api/v1/media/uploads`. Repeating a request with the same key within 24 hours never repeats the work; the same key with a different body is a 422. Chat REST writes use only the header; every MCP tool accepts an idempotencyKey argument. Publishing routes that already accept idempotencyKey in the body continue to do so. The other REST writes ignore the header: finishing an upload is safe to repeat anyway.\n\n## Uploading media\n1. `POST /api/v1/media/uploads` with the file's type and size. The answer holds URLs for the first parts (up to 8) and `partCount`.\n2. `PUT` each part's bytes (`partSize` each, the last one smaller) to its URL and keep the ETag header each answer returns.\n3. For a file with more parts, `POST /api/v1/media/uploads/{id}/parts` for up to 16 more URLs at a time. A URL expires, so ask for them as you go.\n4. `POST /api/v1/media/uploads/{id}/complete` with every part's number and ETag. Use the returned id in `mediaAssetIds`.\n\n## Polling for changes\n`GET /api/v1/posts/`, `GET /api/v1/posts/{id}` return an ETag. Send it back as `If-None-Match`: when nothing changed the answer is usually `304` and costs almost nothing (sometimes it is a `200` with a new ETag; treat that as a normal answer). No other route sends one. Or pass the previous response's `serverTime` as `updatedSince`. Changes can take up to a minute to show. Deleted posts are not reported by `updatedSince`; they answer 404.\n\n## Activity\nEvery call is logged under the key's Activity in Settings, without request bodies. Activity and \"last used\" can take up to 20 minutes to appear.\n\n## MCP\nThe MCP server is `https://api-platform.brightbean.xyz/api/v1/mcp` (Streamable HTTP, `POST`). It has the same permissions, limits and Activity log as REST.\n- **With an API key:** send it as `Authorization: Bearer <key>`, e.g. `claude mcp add --transport http brightbean https://api-platform.brightbean.xyz/api/v1/mcp --header \"Authorization: Bearer <key>\"`.\n- **With OAuth** (claude.ai, Claude Desktop): add the URL as a custom connector. The client finds everything from the `401`: discovery is at `/.well-known/oauth-protected-resource/api/v1/mcp`, and the endpoints are `/oauth/authorize/`, `/oauth/token/`, `/oauth/register` (dynamic client registration) and `/oauth/revoke_token/`. PKCE (`S256`) is required. The person approving picks the workspace, channels and permissions.",
     "title": "BrightBean API",
     "version": "1"
   },
@@ -201,6 +201,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -208,12 +212,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -313,6 +321,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -320,12 +332,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -450,6 +466,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -457,12 +477,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -560,6 +584,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -567,12 +595,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -684,6 +716,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -691,12 +727,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -826,6 +866,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -833,12 +877,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -933,6 +981,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -940,12 +992,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -1161,6 +1217,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -1168,12 +1228,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -1499,6 +1563,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -1506,12 +1574,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -1795,6 +1867,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -1802,12 +1878,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -2142,6 +2222,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -2149,12 +2233,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -2293,6 +2381,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -2300,12 +2392,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -2432,6 +2528,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -2439,12 +2539,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -2552,6 +2656,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -2559,12 +2667,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -2773,6 +2885,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -2780,12 +2896,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -2878,11 +2998,12 @@
                   "comment",
                   "mention",
                   "dm",
+                  "social_dm",
                   "conversation"
                 ],
                 "type": "string"
               },
-              "maxItems": 4,
+              "maxItems": 5,
               "type": "array"
             }
           },
@@ -3169,6 +3290,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -3176,12 +3301,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -3223,6 +3352,10 @@
                 "schema": {
                   "additionalProperties": false,
                   "properties": {
+                    "canReplyPrivately": {
+                      "description": "Whether `private: true` passes the comment's own checks: an Instagram or Facebook comment whose author and post Meta shared, on the channel that owns messaging, not yet answered privately, inside the platform's private-reply window. An opt-out or a plan limit can still refuse the send. Always false for a conversation.",
+                      "type": "boolean"
+                    },
                     "item": {
                       "additionalProperties": false,
                       "properties": {
@@ -3465,7 +3598,8 @@
                     "item",
                     "thread",
                     "post",
-                    "replies"
+                    "replies",
+                    "canReplyPrivately"
                   ],
                   "type": "object"
                 }
@@ -3495,6 +3629,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -3502,12 +3640,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -3720,6 +3862,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -3727,12 +3873,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -3878,6 +4028,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -3885,12 +4039,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -4067,6 +4225,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -4074,12 +4236,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -4227,6 +4393,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -4234,12 +4404,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -4435,6 +4609,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -4442,12 +4620,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -4570,6 +4752,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -4577,12 +4763,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -4963,6 +5153,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -4970,12 +5164,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -5168,7 +5366,8 @@
                                 "publishAs": {
                                   "enum": [
                                     "video",
-                                    "reel"
+                                    "reel",
+                                    "story"
                                   ],
                                   "type": "string"
                                 }
@@ -5180,6 +5379,13 @@
                               "properties": {
                                 "aiGenerated": {
                                   "type": "boolean"
+                                },
+                                "publishAs": {
+                                  "enum": [
+                                    "feed",
+                                    "story"
+                                  ],
+                                  "type": "string"
                                 }
                               },
                               "type": "object"
@@ -5596,6 +5802,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -5603,12 +5813,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -5667,6 +5881,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -5674,12 +5892,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -5990,6 +6212,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -5997,12 +6223,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -6118,7 +6348,8 @@
                                 "publishAs": {
                                   "enum": [
                                     "video",
-                                    "reel"
+                                    "reel",
+                                    "story"
                                   ],
                                   "nullable": true,
                                   "type": "string"
@@ -6133,6 +6364,14 @@
                                 "aiGenerated": {
                                   "nullable": true,
                                   "type": "boolean"
+                                },
+                                "publishAs": {
+                                  "enum": [
+                                    "feed",
+                                    "story"
+                                  ],
+                                  "nullable": true,
+                                  "type": "string"
                                 }
                               },
                               "type": "object"
@@ -6563,6 +6802,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -6570,12 +6813,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -6908,6 +7155,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -6915,12 +7166,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -7289,6 +7544,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -7296,12 +7555,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -7634,6 +7897,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -7641,12 +7908,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -8006,6 +8277,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -8013,12 +8288,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -8427,6 +8706,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -8434,12 +8717,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -8762,6 +9049,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -8769,12 +9060,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -8954,6 +9249,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -8961,12 +9260,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -9173,6 +9476,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -9180,12 +9487,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
@@ -9353,6 +9664,10 @@
                     "limit": {
                       "type": "number"
                     },
+                    "plan": {
+                      "description": "On a 402 chat_limit: the workspace's Chat plan.",
+                      "type": "string"
+                    },
                     "post_id": {
                       "description": "On `POST /api/v1/posts/`: the post the call saved before it failed. After a 4xx it is still a draft: fix it (`PATCH /api/v1/posts/{id}`) and send it with `/submit`. After a 5xx, read it first (`GET`): it may have gone ahead. A 4xx without it saved nothing.",
                       "type": "string"
@@ -9360,12 +9675,16 @@
                     "remaining": {
                       "type": "number"
                     },
+                    "resets_at": {
+                      "description": "On a 402 for `contacts_reached`: when the monthly count starts again.",
+                      "type": "string"
+                    },
                     "retry_after": {
                       "description": "On 429: seconds to wait.",
                       "type": "number"
                     },
                     "tier": {
-                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …).",
+                      "description": "On 429: which limit (`credential_writes`, `platform_quota:instagram`, …). On a 402 chat_limit: which free Chat limit (`contacts_reached`, `automation_channels`, `live_automations`).",
                       "type": "string"
                     }
                   },
