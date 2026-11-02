@@ -19,6 +19,8 @@ Bluesky, Mastodon, Google Business and DEV. It has two ways in, with the same ru
 
 Interactive API docs: <https://api-platform.brightbean.xyz/api/v1/docs>.
 
+Setting this up yourself, step by step: <https://brightbean.xyz/agents/>.
+
 ## Quick links
 
 | Want | Look at |

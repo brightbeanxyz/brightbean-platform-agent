@@ -45,7 +45,8 @@ Don't use it:
 
 **Check for tools first.** If tools named `social_list_accounts`, `social_create_draft` and
 so on are available, the BrightBean MCP server is connected: use them. If not, use REST,
-or help the user connect (see [`mcp/`](mcp/README.md)).
+or help the user connect (see [`mcp/`](mcp/README.md)). A person setting it up can follow
+the step-by-step page at https://brightbean.xyz/agents/.
 
 **Getting a key (the user does this; you can't):**
 1. Open [platform.brightbean.xyz/settings/workspace/api](https://platform.brightbean.xyz/settings/workspace/api)
@@ -141,7 +142,8 @@ is optional.
 (`""` = none on this channel), `boardId` (Pinterest), and `options`:
 - `tiktok`: `privacyLevel`, `allowComment`/`allowDuet`/`allowStitch`, disclosure flags, `aiGenerated`, `coverMs`
 - `youtube`: `privacyStatus`, `madeForKids`, `tags`, `categoryId`, `thumbnail`
-- `facebook`: `publishAs` (`video`|`reel`)
+- `instagram`: `aiGenerated`, `publishAs` (`feed`|`story`)
+- `facebook`: `publishAs` (`video`|`reel`|`story`). A Story is exactly one image or one video (3–60 s).
 - `devto`: `tags`, `canonicalUrl`
 
 The channel's `optionsSchema` has the exact JSON Schema.

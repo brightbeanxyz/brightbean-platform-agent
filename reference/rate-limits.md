@@ -56,7 +56,9 @@ queued and published posts all count, by the time they go out.
 | TikTok | 15 |
 | DEV | 10 |
 
-A workspace admin can change a channel's cap. The answer depends on how you asked:
+These are the defaults. BrightBean staff can set a different cap for one channel, and
+nothing in the app changes it, so treat the refusal (with its `limit` and `available_at`)
+as the source of truth rather than this table. The answer depends on how you asked:
 
 **Scheduled, queued or prioritised** (a fixed time; waiting doesn't help):
 

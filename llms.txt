@@ -1,6 +1,6 @@
 # BrightBean platform: API and MCP for agents
 
-> How an AI agent connects to BrightBean (platform.brightbean.xyz) and drafts, schedules, queues, publishes and measures social posts on Facebook, Instagram, Threads, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Google Business and DEV. MCP server: https://api-platform.brightbean.xyz/api/v1/mcp (Streamable HTTP, OAuth or Bearer API key). REST: https://api-platform.brightbean.xyz/api/v1 (Bearer API key `bb_live_…`, plus your own User-Agent).
+> How an AI agent connects to BrightBean (platform.brightbean.xyz) and drafts, schedules, queues, publishes and measures social posts on Facebook, Instagram, Threads, LinkedIn, TikTok, YouTube, Pinterest, Bluesky, Mastodon, Google Business and DEV, drafts posts from References, and, in workspaces with Chat, reads and answers the inbox, manages contacts and starts automations. MCP server: https://api-platform.brightbean.xyz/api/v1/mcp (Streamable HTTP, OAuth or Bearer API key). REST: https://api-platform.brightbean.xyz/api/v1 (Bearer API key `bb_live_…`, plus your own User-Agent).
 
 Start with SKILL.md: it is enough for normal use. Every time needs an offset, every write takes an idempotency key, and nothing should be published or scheduled without the user's confirmation.
 
@@ -8,6 +8,7 @@ Start with SKILL.md: it is enough for normal use. Every time needs an offset, ev
 
 - [SKILL.md](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/SKILL.md): connect, first call, every tool and endpoint, the rules
 - [README.md](https://raw.githubusercontent.com/brightbeanxyz/brightbean-platform-agent/main/README.md): install for Claude Code, Claude Desktop, claude.ai, Cursor, VS Code, Codex
+- [Setup guide for people](https://brightbean.xyz/agents/): sign up, get a key, connect a client
 
 ## Reference
 

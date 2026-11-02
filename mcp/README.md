@@ -15,8 +15,9 @@ Streamable HTTP server. There are two ways to sign in:
   **Create API key**, and keep it in an environment variable (`BRIGHTBEAN_API_KEY`), never
   in a committed file.
 
-Once connected, the client sees up to 20 tools named `social_*`. Tools for permissions the
-connection lacks are hidden. Load [`../SKILL.md`](../SKILL.md) into the agent's context as
+Once connected, the client sees up to 35 tools: 20 named `social_*`, 2 for References
+(`list_references`, `create_post_from_reference`), and, in workspaces with Chat, 13 for the
+inbox, contacts and automations. Tools for permissions the connection lacks are hidden. Load [`../SKILL.md`](../SKILL.md) into the agent's context as
 well. The tool descriptions alone don't cover the rules about times, idempotency, Review
 and confirmations.
 

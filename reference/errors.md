@@ -21,6 +21,7 @@ time that matters.
 
 | Status | `error` | Typical `detail` | What to do |
 |---|---|---|---|
+| 402 | `chat_limit` | (+ `tier`: `contacts_reached` · `automation_channels` · `live_automations`; `plan`, `limit`, `remaining`, and `resets_at` for the monthly count) | A free Chat plan limit (25 people a month, 2 automation channels, 4 live automations). Don't retry: the user upgrades Chat, or waits for `resets_at`. |
 | 401 | `unauthorized` | ``Send your API key as `Authorization: Bearer <key>`.`` · `That isn't a valid API key.` · `This API key has been revoked.` · `This API key has expired.` · `The person who created this API key is no longer in the workspace.` | Check the key and the host (a `bb_staging_` key fails on production). Otherwise ask the user for a new key. Don't loop. |
 | 403 | `forbidden` | `missing permission: publish_directly` | Use the path that fits the permission (e.g. `submit` → Review), or ask the user to add the permission to the key |
 | 403 | `forbidden` | `this key may not post to channel <ids>. Add it to the key's channels in Settings.` | Use only channels from `/accounts/`, or ask the user to add the channel to the key |
@@ -46,6 +47,8 @@ time that matters.
 | 422 | `invalid` | `cannot delete a post that is published` | Live posts can't be deleted through BrightBean |
 | 422 | `invalid` | `that cursor no longer points at a post; start again` | Restart the listing without `cursor` |
 | 422 | `idempotency_mismatch` | `idempotency key "<k>" was already used with a different request body` | A new request needs a new key |
+| 422 | `not_replyable` | (`detail` says why) | That inbox item can't take that reply, e.g. `private: true` when `canReplyPrivately` is false. Reply publicly or not at all. |
+| 422 | `opted_out` | | The person opted out. Don't message them. |
 | 422 | `platform_quota` | `… The earliest time that fits is <iso>.` (+ `available_at`, `tier`, `limit`) | The channel's daily cap is full at that time. Offer `available_at` or another channel. |
 | 429 | `rate_limited` | `Too many requests. Try again in 60 seconds.` (+ `tier`, `retry_after`) | Wait `Retry-After` |
 | 429 | `platform_quota` | (+ `retry_after`, `available_at`) | Daily cap full when publishing now: schedule for `available_at` instead |

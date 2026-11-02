@@ -593,3 +593,14 @@ Their scopes are separate from publishing. See the saved OpenAPI schemas for str
 bodies and response fields; ordinary publishing account lists exclude WhatsApp/Telegram.
 Replies, sends and automation starts preserve normal channel scope, consent, metering
 and retry rules. Internal notes, raw metadata and source attachment URLs are excluded.
+
+- `GET /api/v1/inbox/items` filters by `kinds`: `comment`, `mention`, `dm`, `social_dm`
+  (a Mastodon direct message, which must not be answered publicly) and `conversation`
+  (a Chat DM thread). `dm` is a legacy kind that is being migrated into `conversation`.
+- `GET /api/v1/inbox/items/{id}` returns `canReplyPrivately`: whether `private: true`
+  passes the comment's own checks (an Instagram or Facebook comment whose author and post
+  Meta shared, on the channel that owns messaging, not yet answered privately, inside the
+  private-reply window). An opt-out or a plan limit can still refuse the send. It is
+  always `false` for a conversation.
+- A refused reply is a 422 `not_replyable` (`detail` says why) or `opted_out`. A free
+  Chat plan limit is a 402 `chat_limit`; see [errors](errors.md).

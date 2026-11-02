@@ -65,7 +65,9 @@ Uploads through the API take images and gifs up to 64 MiB and videos up to 3 GiB
   Only company pages take a first comment, and `capabilities.firstComment` tells you which
   is which.
 - **Instagram:** needs at least one image or video. Mixed carousels are allowed.
+  `options.instagram.publishAs: "story"` posts one image or one video (3–60 s) as a Story.
 - **DEV (dev.to):** posts are articles. A `title` is required. The caption is the
   Markdown body.
-- **Facebook:** for a video, `options.facebook.publishAs` picks `video` or `reel`.
+- **Facebook:** for a video, `options.facebook.publishAs` picks `video` or `reel`;
+  `story` posts one image or one video (3–60 s) as a Story.
 - **X / Twitter, Reddit, Substack** are not publishable through this API.
