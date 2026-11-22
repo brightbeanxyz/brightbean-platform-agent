@@ -105,6 +105,7 @@ id:
 | `title` | YouTube (≤100), Pinterest (≤100), DEV (≤128, required) |
 | `firstComment` | `""` turns the post's first comment off for this channel |
 | `boardId` | Pinterest board id from `/accounts/{id}/boards`. `""` clears it. |
+| `mediaAssetIds` | This channel's own media, in order (≤100 ids), published **instead of** the post's `mediaAssetIds`. Create only (`POST /posts/`, `social_create_draft`); an edit can't change it. `null` or `[]` = the post's media. |
 | `options` | This network's settings (below). `null` clears them. |
 
 In PATCH, every field inside an entry takes `null` (back to inherited or cleared), but
@@ -142,6 +143,7 @@ refused.
 |---|---|
 | `aiGenerated` | boolean |
 | `publishAs` | `feed` \| `story`. Left out = `feed`. |
+| `publishAsFrom` | `design`. Set by BrightBean when a Story template's design chose `story`, not a person; it follows the design. Don't send it: set `publishAs` alone. |
 
 **`facebook`**
 

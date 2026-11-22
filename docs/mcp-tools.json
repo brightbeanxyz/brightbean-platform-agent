@@ -241,11 +241,12 @@
                 "comment",
                 "mention",
                 "dm",
+                "social_dm",
                 "conversation"
               ],
               "type": "string"
             },
-            "maxItems": 4,
+            "maxItems": 5,
             "type": "array"
           },
           "labelIds": {
@@ -1061,7 +1062,7 @@
         "readOnlyHint": true,
         "title": "List Pinterest boards"
       },
-      "description": "List a Pinterest channel's boards. A pin needs `perAccount[<accountId>].boardId`.",
+      "description": "List a Pinterest channel's boards. A pin needs `perAccount[<accountId>].boardId`. A video pin's cover is optional: `perAccount[<accountId>].options.pinterest.cover` is `{ atMs }` (a moment in the video; Pinterest uses whole seconds) or `{ assetId }` (an uploaded JPG or PNG). Without one, the video's first good frame is used.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1238,7 +1239,7 @@
         "readOnlyHint": false,
         "title": "Create a post"
       },
-      "description": "Create a social post draft on one or more of this connection's channels (ids from social_list_accounts — never invent them). Optionally pass a `delivery` (queue | prioritise | now | at) to send it on in the same call. With publish rights the delivery is carried out: scheduled, queued or published. Without them, or when the workspace requires approval, the post goes to BrightBean Review, where a person approves it; approving carries the delivery out. The result says which happened. A time must carry its offset (2026-10-06T09:00:00+02:00). `linkUrl` is where the post points (an http(s) address). Only Pinterest acts on it today — every other channel ignores it — so set it when a pin should send the reader somewhere, and leave it out otherwise rather than repeating a link that is already in the caption. `perAccount[<accountId>]` overrides one channel (`caption`, `title`). A `firstComment` on a channel that can't take one is refused, never dropped. `perAccount[<accountId>].options` sets that network's own settings (TikTok privacy, YouTube visibility and tags, …); its schema is on the channel in social_list_accounts. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
+      "description": "Create a social post draft on one or more of this connection's channels (ids from social_list_accounts — never invent them). Optionally pass a `delivery` (queue | prioritise | now | at) to send it on in the same call. With publish rights the delivery is carried out: scheduled, queued or published. Without them, or when the workspace requires approval, the post goes to BrightBean Review, where a person approves it; approving carries the delivery out. The result says which happened. A time must carry its offset (2026-10-06T09:00:00+02:00). `linkUrl` is where the post points (an http(s) address). Only Pinterest acts on it today — every other channel ignores it — so set it when a pin should send the reader somewhere, and leave it out otherwise rather than repeating a link that is already in the caption. `perAccount[<accountId>]` overrides one channel: `caption`, `title`, and `mediaAssetIds`, that channel's OWN pictures, which it publishes instead of the shared `mediaAssetIds`. Pass a channel's full list to change its pictures, `null` to put it back on the shared pictures, or leave the key out to keep what it has. A `firstComment` on a channel that can't take one is refused, never dropped. `perAccount[<accountId>].options` sets that network's own settings (TikTok privacy, YouTube visibility and tags, a Facebook Reel, a Pinterest video cover, …); its schema is on the channel in social_list_accounts. `publishAs: \"story\"` on Instagram or Facebook publishes a Story when the post is one image or one video (a video 3 to 60 s): a Story takes no caption and no first comment, so neither is published on that channel. Pass `idempotencyKey` (any string you choose) so a retry never does the work twice.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1373,6 +1374,21 @@
                 "firstComment": {
                   "type": "string"
                 },
+                "mediaAssetIds": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "format": "uuid",
+                        "type": "string"
+                      },
+                      "maxItems": 100,
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "options": {
                   "anyOf": [
                     {
@@ -1402,7 +1418,8 @@
                             "publishAs": {
                               "enum": [
                                 "video",
-                                "reel"
+                                "reel",
+                                "story"
                               ],
                               "type": "string"
                             }
@@ -1414,6 +1431,53 @@
                           "properties": {
                             "aiGenerated": {
                               "type": "boolean"
+                            },
+                            "publishAs": {
+                              "enum": [
+                                "feed",
+                                "story"
+                              ],
+                              "type": "string"
+                            },
+                            "publishAsFrom": {
+                              "const": "design",
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "pinterest": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "cover": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "assetId": {
+                                      "format": "uuid",
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "assetId"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "atMs": {
+                                      "minimum": 0,
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "required": [
+                                    "atMs"
+                                  ],
+                                  "type": "object"
+                                }
+                              ]
                             }
                           },
                           "type": "object"
@@ -1725,7 +1789,8 @@
                                         {
                                           "enum": [
                                             "video",
-                                            "reel"
+                                            "reel",
+                                            "story"
                                           ],
                                           "type": "string"
                                         }
@@ -1758,6 +1823,102 @@
                                         },
                                         {
                                           "type": "boolean"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "publishAs": {
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "not": {}
+                                        },
+                                        {
+                                          "enum": [
+                                            "feed",
+                                            "story"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "publishAsFrom": {
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "not": {}
+                                        },
+                                        {
+                                          "const": "design",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "pinterest": {
+                          "anyOf": [
+                            {
+                              "additionalProperties": false,
+                              "properties": {
+                                "cover": {
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "not": {}
+                                        },
+                                        {
+                                          "anyOf": [
+                                            {
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "assetId": {
+                                                  "format": "uuid",
+                                                  "type": "string"
+                                                }
+                                              },
+                                              "required": [
+                                                "assetId"
+                                              ],
+                                              "type": "object"
+                                            },
+                                            {
+                                              "additionalProperties": false,
+                                              "properties": {
+                                                "atMs": {
+                                                  "minimum": 0,
+                                                  "type": "integer"
+                                                }
+                                              },
+                                              "required": [
+                                                "atMs"
+                                              ],
+                                              "type": "object"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -2764,6 +2925,58 @@
       },
       "name": "social_get_analytics",
       "title": "Read analytics"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true,
+        "title": "List Studio templates"
+      },
+      "description": "List this workspace's Studio templates and the built-ins, each with its slots: a text slot takes words within maxChars and maxLines, a media slot a picture or footage as `accepts` says (footage trimmed to lengthS). A template with a referenceKey is what a draft from that Reference fills. The words a template holds now are not listed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "idempotencyKey": {
+            "description": "Retry key. A write returns the first result for 24 hours.",
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "default": 50,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "network": {
+            "description": "Only templates made for this network.",
+            "enum": [
+              "facebook",
+              "instagram",
+              "threads",
+              "linkedin",
+              "tiktok",
+              "youtube",
+              "pinterest",
+              "bluesky",
+              "mastodon",
+              "google_business",
+              "devto"
+            ],
+            "type": "string"
+          },
+          "q": {
+            "description": "Only templates whose name contains this.",
+            "maxLength": 120,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_templates",
+      "title": "List Studio templates"
     }
   ]
 }
