@@ -90,6 +90,10 @@ POST /api/v1/media/uploads/a1b2c3d4-…/complete
 → **200** with the media asset. Its `id` equals `mediaAssetId`; put it in a post's
 `mediaAssetIds`.
 - `durationSec`, `width` and `height` are optional, but give them when you know them.
+- A video gets a cover frame (its thumbnail) on the server, 1 second in (sooner on a clip
+  under 3 s). Without `durationSec` it comes a little later, once BrightBean has measured
+  the video. To use a different cover on Pinterest, see `options.pinterest.cover` in
+  [posts-and-delivery.md](posts-and-delivery.md).
 - Calling `complete` twice is safe: the second call returns the finished asset.
 - A 422 here means the bytes weren't a supported image or video, or didn't match
   `mediaType`. The upload is discarded; start again.

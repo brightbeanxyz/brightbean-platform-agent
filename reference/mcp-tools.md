@@ -373,6 +373,7 @@ complete-release routes described in [rest-api.md](rest-api.md#references-comple
 |---|---|---|
 | `list_references` | List References | See `docs/mcp-tools.json` for the strict schema |
 | `create_post_from_reference` | Draft from a Reference | See `docs/mcp-tools.json` for the strict schema |
+| `list_templates` | List Studio templates | Optional `network`, `q`, `limit` |
 | `inbox_list` | List inbox items | See `docs/mcp-tools.json` for the strict schema |
 | `inbox_get` | Read an inbox item | See `docs/mcp-tools.json` for the strict schema |
 | `inbox_reply` | Reply to a comment | See `docs/mcp-tools.json` for the strict schema |
@@ -393,3 +394,7 @@ canonical-key catalogue. `create_post_from_reference` takes a **literal**, unenc
 retry `idempotencyKey`. Its result is an asynchronous job rather than `{post,routed}`.
 Poll `statusUrl` over REST with the same credential to obtain the resulting post ID.
 Neither tool publishes; paid footage still requires the BrightBean confirmation flow.
+
+`list_templates` (`read`) returns the same `{data}` as `GET /api/v1/templates`: the
+workspace's Studio templates and the built-ins, each with the slots a draft fills (see
+[rest-api.md](rest-api.md#templates)). It is refused while Studio templates are off.

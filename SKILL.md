@@ -107,6 +107,7 @@ From the answer, keep:
 |---|---|---|---|
 | `list_references` | read | `GET /references` | `platform?`, `search?`, `kind?` (`all`/`workspace`/`built_in`) |
 | `create_post_from_reference` | create_posts | `POST /references/{id}/posts` | literal `referenceKey`, `topicId?`, `channel?`, `accountId?`, `note?`, slot maps, `idempotencyKey?` |
+| `list_templates` | read | `GET /templates` | `network?`, `q?`, `limit?`. Studio templates and their slots |
 | `social_list_accounts` | read | `GET /accounts/` | none |
 | `social_list_boards` | read | `GET /accounts/{id}/boards` | `accountId` (Pinterest) |
 | `social_get_tiktok_creator_info` | read | `GET /accounts/{id}/tiktok-creator-info` | `accountId`. Call it before **every** TikTok post |
@@ -139,11 +140,14 @@ is optional.
   `"Europe/Berlin"`). It only changes how replies word the time, so pass the user's zone.
 
 **Per channel** (`perAccount`, keyed by channel id): `caption`, `title`, `firstComment`
-(`""` = none on this channel), `boardId` (Pinterest), and `options`:
+(`""` = none on this channel), `boardId` (Pinterest), `mediaAssetIds` (this channel's own
+media instead of the post's, on create only), and `options`:
 - `tiktok`: `privacyLevel`, `allowComment`/`allowDuet`/`allowStitch`, disclosure flags, `aiGenerated`, `coverMs`
 - `youtube`: `privacyStatus`, `madeForKids`, `tags`, `categoryId`, `thumbnail`
-- `instagram`: `aiGenerated`, `publishAs` (`feed`|`story`)
+- `instagram`: `aiGenerated`, `publishAs` (`feed`|`story`). Don't set `publishAsFrom`: BrightBean sets it.
 - `facebook`: `publishAs` (`video`|`reel`|`story`). A Story is exactly one image or one video (3–60 s).
+- `pinterest`: `cover`, a video Pin's cover: `{"atMs": 3000}` (a moment in the video) or
+  `{"assetId": "<JPG or PNG mediaAssetId>"}`. Optional: without it a frame of the video is used.
 - `devto`: `tags`, `canonicalUrl`
 
 The channel's `optionsSchema` has the exact JSON Schema.

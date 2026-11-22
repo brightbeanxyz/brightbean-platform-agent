@@ -71,6 +71,7 @@ Content-Type: application/json           # on requests with a body
 | GET | `/api/v1/references` | `reference_list` | `read` | `list_references` |
 | POST | `/api/v1/references/{id}/posts` | `reference_create_post` | `create_posts` | `create_post_from_reference` |
 | GET | `/api/v1/references/{id}/posts/{jobId}` | `reference_draft_status` | `read` | `none` |
+| GET | `/api/v1/templates` | `template_list` | `read` | `list_templates` |
 
 Only one file upload has no REST route: `social_upload_media` (a small base64 file in one
 call) exists on MCP only.
@@ -303,7 +304,7 @@ Create a post as a draft. Add a `delivery` to send it on in the same call.
 | `title` | string | no | For channels that take one (YouTube, Pinterest; required for DEV). |
 | `firstComment` | string | no | Posted as the first comment. A channel that can't take one makes the whole call 422. |
 | `linkUrl` | string ≤2048 | no | Where the post points. Only Pinterest uses it. `javascript:` and `data:` are refused. |
-| `perAccount` | object | no | Per-channel overrides, keyed by channel id: `{caption?, title?, firstComment?, boardId?, options?}`. See [posts-and-delivery.md](posts-and-delivery.md). |
+| `perAccount` | object | no | Per-channel overrides, keyed by channel id: `{caption?, title?, firstComment?, boardId?, options?, mediaAssetIds?}`. See [posts-and-delivery.md](posts-and-delivery.md). |
 | `mediaAssetIds` | uuid[] (≤20) | no | Uploaded media, in display order. Each must be finished uploading. |
 | `proposedPublishAt` | date-time \| null | no | A suggested time, as a note only. Nothing is scheduled from it. |
 | `delivery` | [Delivery](#delivery) | no | Schedule, queue or publish in the same call. Left out, the post stays a draft. |
@@ -365,7 +366,7 @@ Fields (all optional):
 | `caption` | no | |
 | `title`, `firstComment`, `linkUrl`, `proposedPublishAt` | yes: clears it | |
 | `mediaAssetIds` | no | Replaces the whole list. Send `[]` to remove all media. |
-| `perAccount` | **no** (the object itself) | Each entry's `caption`, `title`, `firstComment`, `boardId` and `options` take `null` (back to inherited / cleared). To clear a channel's overrides, send `{"<id>": {"caption": null, "title": null, "firstComment": null, "boardId": null, "options": null}}`. |
+| `perAccount` | **no** (the object itself) | Each entry's `caption`, `title`, `firstComment`, `boardId` and `options` take `null` (back to inherited / cleared). To clear a channel's overrides, send `{"<id>": {"caption": null, "title": null, "firstComment": null, "boardId": null, "options": null}}`. A channel's own `mediaAssetIds` can't be sent here (it is refused): the channel keeps the media it was created with. |
 
 **200** → [WritePost](#writepost).
 
@@ -585,6 +586,32 @@ in BrightBean; the public API does not authorize it automatically. Stopped/revok
 cannot start or resume work; a later human edit uses that person's permissions. Disabled
 References refuse with 403, and insufficient billing access with 402. Creating a new
 Reference through public REST is outside V1.
+
+## Templates
+
+`GET /api/v1/templates` (`read`) returns `{data}`: the workspace's own Studio templates,
+newest first, then the built-ins. It answers 403 while Studio templates are switched off
+for the workspace.
+
+Query (all optional): `network` (one network id, e.g. `instagram`), `q` (part of the
+name, ≤120 chars), `limit` (1–100, default 50).
+
+Each template has `id`, `name`, `source` (`saved`, `recreated` or `built_in`), `network`
+(or `null`), `aspect` (`ig`, `story`, `sq`, `li`, `yt`, `web`, `p34`, `l43`, `p23`),
+`durationS` (`null` for a still), `slideCount`, `referenceKey`, `slots` and `createdAt`.
+
+- `referenceKey`: the Reference the template was saved from, or `null`. A draft from that
+  Reference (`POST /api/v1/references/{id}/posts`) fills this template.
+- `slots[]`: what a draft fills. Each has `id`, `kind` (`text` or `media`), `order` and
+  `slideIndex` (0 is the cover, or the only slide), and may have `hint`.
+  - A text slot: `maxChars`, `maxLines`, and `maxWidthPx` when its words sit beside other
+    words (wider words are refused).
+  - A media slot: `accepts` (`picture`, `footage` or `both`; absent means `both`),
+    `lengthS` (footage is trimmed to this), `holds` (`frame` or `clip`), and
+    `optional: true` when the design stands without it.
+
+It lists no media and none of the words a template holds now. Use it to see what a
+Reference's template takes (words, pictures, footage) before drafting from it.
 
 ## Chat operations
 

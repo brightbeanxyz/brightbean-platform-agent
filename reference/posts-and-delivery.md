@@ -105,6 +105,7 @@ id:
 | `title` | YouTube (≤100), Pinterest (≤100), DEV (≤128, required) |
 | `firstComment` | `""` turns the post's first comment off for this channel |
 | `boardId` | Pinterest board id from `/accounts/{id}/boards`. `""` clears it. |
+| `mediaAssetIds` | This channel's own media, in order (≤100 ids), published **instead of** the post's `mediaAssetIds`. Create only (`POST /posts/`, `social_create_draft`); an edit can't change it. `null` or `[]` = the post's media. |
 | `options` | This network's settings (below). `null` clears them. |
 
 In PATCH, every field inside an entry takes `null` (back to inherited or cleared), but
@@ -142,6 +143,7 @@ refused.
 |---|---|
 | `aiGenerated` | boolean |
 | `publishAs` | `feed` \| `story`. Left out = `feed`. |
+| `publishAsFrom` | `design`. Set by BrightBean when a Story template's design chose `story`, not a person; it follows the design. Don't send it: set `publishAs` alone. |
 
 **`facebook`**
 
@@ -153,6 +155,34 @@ A Story takes exactly one image or one video; a Story video must be 3–60 secon
 the post is refused (trim it, or leave out `story` to post it as a feed post on Instagram
 or a Page video on Facebook). A video of unknown length is not refused. With any other media, a
 `story` choice is ignored and the post goes out as an ordinary post.
+
+**`pinterest`**
+
+| Field | Type |
+|---|---|
+| `cover` | a video Pin's cover: `{"atMs": <integer ≥ 0>}` (a moment in the video, in ms) or `{"assetId": "<image mediaAssetId>"}`. Exactly one of the two. |
+
+The cover is optional. Without one, the Pin uses the video's cover frame, which BrightBean
+makes at upload, or else a frame Pinterest takes 1 second in. A video Pin is never refused
+for having no cover.
+
+- **A moment:** Pinterest takes whole seconds, so `atMs` is rounded down (3700 → 3 s). A
+  moment past the end of the attached video is refused when the post is scheduled.
+- **A picture:** a JPG or PNG up to 20 MB, uploaded to the same workspace. Upload it as an
+  image, but don't put it in the post's `mediaAssetIds`. Another type, a larger file, or an
+  asset no longer in the workspace is refused when the post is scheduled. One deleted after
+  that falls back to the automatic cover.
+- On an image Pin, `cover` is ignored.
+
+```jsonc
+"perAccount": {
+  "<pinterestId>": {
+    "title": "Spring menu",
+    "boardId": "1234567890",
+    "options": { "pinterest": { "cover": { "atMs": 3000 } } }
+  }
+}
+```
 
 **`devto`**
 
