@@ -154,6 +154,34 @@ the post is refused (trim it, or leave out `story` to post it as a feed post on 
 or a Page video on Facebook). A video of unknown length is not refused. With any other media, a
 `story` choice is ignored and the post goes out as an ordinary post.
 
+**`pinterest`**
+
+| Field | Type |
+|---|---|
+| `cover` | a video Pin's cover: `{"atMs": <integer ≥ 0>}` (a moment in the video, in ms) or `{"assetId": "<image mediaAssetId>"}`. Exactly one of the two. |
+
+The cover is optional. Without one, the Pin uses the video's cover frame, which BrightBean
+makes at upload, or else a frame Pinterest takes 1 second in. A video Pin is never refused
+for having no cover.
+
+- **A moment:** Pinterest takes whole seconds, so `atMs` is rounded down (3700 → 3 s). A
+  moment past the end of the attached video is refused when the post is scheduled.
+- **A picture:** a JPG or PNG up to 20 MB, uploaded to the same workspace. Upload it as an
+  image, but don't put it in the post's `mediaAssetIds`. Another type, a larger file, or an
+  asset no longer in the workspace is refused when the post is scheduled. One deleted after
+  that falls back to the automatic cover.
+- On an image Pin, `cover` is ignored.
+
+```jsonc
+"perAccount": {
+  "<pinterestId>": {
+    "title": "Spring menu",
+    "boardId": "1234567890",
+    "options": { "pinterest": { "cover": { "atMs": 3000 } } }
+  }
+}
+```
+
 **`devto`**
 
 | Field | Type |

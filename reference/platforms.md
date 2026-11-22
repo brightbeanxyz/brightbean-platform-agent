@@ -54,6 +54,8 @@ Uploads through the API take images and gifs up to 64 MiB and videos up to 3 GiB
 
 - **Pinterest:** every pin needs a board. List boards with `/accounts/{id}/boards` and set
   `perAccount[id].boardId`. Use `linkUrl` for where the pin sends people, and a `title`.
+  A video Pin's cover is chosen automatically. To pick it, set `options.pinterest.cover`
+  to a moment in the video or a JPG/PNG ([posts-and-delivery.md](posts-and-delivery.md)).
 - **TikTok:** read `/accounts/{id}/tiktok-creator-info` before **every** post (TikTok
   requires it). Set `options.tiktok.privacyLevel` to one of its `privacyLevelOptions`. If
   `canPost` is false, stop and tell the user why. Duplicating a post never copies TikTok

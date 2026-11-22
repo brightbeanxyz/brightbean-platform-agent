@@ -144,6 +144,8 @@ is optional.
 - `youtube`: `privacyStatus`, `madeForKids`, `tags`, `categoryId`, `thumbnail`
 - `instagram`: `aiGenerated`, `publishAs` (`feed`|`story`)
 - `facebook`: `publishAs` (`video`|`reel`|`story`). A Story is exactly one image or one video (3–60 s).
+- `pinterest`: `cover`, a video Pin's cover: `{"atMs": 3000}` (a moment in the video) or
+  `{"assetId": "<JPG or PNG mediaAssetId>"}`. Optional: without it a frame of the video is used.
 - `devto`: `tags`, `canonicalUrl`
 
 The channel's `optionsSchema` has the exact JSON Schema.
